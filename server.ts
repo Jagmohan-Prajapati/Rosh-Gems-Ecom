@@ -26,10 +26,13 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-const razorpay = new Razorpay({
-  key_id: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "",
-  key_secret: process.env.RAZORPAY_KEY_SECRET || "",
-});
+const razorpay =
+  process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET
+    ? new Razorpay({
+        key_id: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+        key_secret: process.env.RAZORPAY_KEY_SECRET,
+      })
+    : null;
 
 const transporter = nodemailer.createTransport({
   service: "gmail",
@@ -818,6 +821,12 @@ app.post("/api/orders/create", isAuth, async (req, res) => {
         data: {
           stockQty: { decrement: item.quantity },
         },
+      });
+    }
+
+    if (!razorpay) {
+      return res.status(500).json({
+        error: "Razorpay is not configured on the server",
       });
     }
 
