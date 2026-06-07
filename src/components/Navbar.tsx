@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Link, useNavigate, useLocation } from 'react-router-dom'
+import { NavLink, Link, useNavigate } from 'react-router-dom'
 import { Search, ShoppingBag, User as UserIcon, LogOut, LayoutDashboard } from 'lucide-react'
 import { useCartStore } from '../store/cartStore'
 import { useAuth } from '../context/AuthContext'
@@ -11,58 +11,58 @@ export const Navbar: React.FC = () => {
   const cartCount = cartItems.reduce((sum, item) => sum + item.quantity, 0)
   const { user, logout } = useAuth()
   const navigate = useNavigate()
-  const location = useLocation()
+
+  const navLinkClass = ({ isActive }: { isActive: boolean }) =>
+    `text-xs uppercase tracking-[0.3em] font-medium transition-all ${
+      isActive ? 'text-[#D4AF37] opacity-100' : 'opacity-70 hover:opacity-100'
+    }`
+
+  const handleLogout = async () => {
+    await logout()
+    navigate('/', { replace: true })
+  }
 
   return (
     <>
       <nav className="fixed top-0 left-0 right-0 h-20 px-6 md:px-12 bg-[#050705]/80 backdrop-blur-xl flex items-center justify-between border-b border-[#D4AF37]/20 z-40">
         <div className="flex items-center gap-4 md:gap-8">
-          <Link
-            to="/shop"
-            className={`text-xs uppercase tracking-[0.3em] font-medium transition-all ${
-              location.pathname === '/shop' ? 'text-[#D4AF37] opacity-100' : 'opacity-70 hover:opacity-100'
-            }`}
-          >
+          <NavLink to="/shop" className={navLinkClass}>
             Shop Gems
-          </Link>
-          <Link
-            to="/about"
-            className={`text-xs uppercase tracking-[0.3em] font-medium transition-all ${
-              location.pathname === '/about' ? 'text-[#D4AF37] opacity-100' : 'opacity-70 hover:opacity-100'
-            }`}
-          >
+          </NavLink>
+
+          <NavLink to="/about" className={navLinkClass}>
             About
-          </Link>
-          <Link
-            to="/contact"
-            className={`text-xs uppercase tracking-[0.3em] font-medium transition-all ${
-              location.pathname === '/contact' ? 'text-[#D4AF37] opacity-100' : 'opacity-70 hover:opacity-100'
-            }`}
-          >
+          </NavLink>
+
+          <NavLink to="/contact" className={navLinkClass}>
             Contact
-          </Link>
+          </NavLink>
         </div>
 
         <Link
           to="/"
           className="absolute left-1/2 -translate-x-1/2 text-2xl md:text-3.5xl font-headline tracking-[0.15em] text-[#D4AF37] hover:brightness-110 transition-all font-light"
+          aria-label="RoshGems home"
         >
           ROSHGEMS
         </Link>
 
         <div className="flex items-center gap-4 md:gap-8">
-          {/* Search Trigger */}
           <button
+            type="button"
             onClick={() => setIsSearchOpen(true)}
+            aria-label="Open search"
             className="flex items-center gap-2 group cursor-pointer border-none bg-transparent text-[#F5F5F0]"
           >
-            <span className="text-[10px] tracking-[0.1em] opacity-60 group-hover:opacity-100 hidden md:inline transition-opacity">SEARCH</span>
+            <span className="text-[10px] tracking-[0.1em] opacity-60 group-hover:opacity-100 hidden md:inline transition-opacity">
+              SEARCH
+            </span>
             <Search className="w-4 h-4 opacity-70 group-hover:opacity-100 group-hover:text-[#D4AF37] transition-all" />
           </button>
 
-          {/* Cart Trigger */}
           <Link
             to="/cart"
+            aria-label={`Open cart with ${cartCount} item${cartCount === 1 ? '' : 's'}`}
             className="relative flex items-center gap-2 group cursor-pointer text-[#F5F5F0] hover:text-[#D4AF37] transition-colors"
           >
             <span className="text-[10px] tracking-[0.1em] opacity-60 group-hover:opacity-100 hidden md:inline transition-opacity">
@@ -71,12 +71,11 @@ export const Navbar: React.FC = () => {
             <ShoppingBag className="w-4 h-4 opacity-70 group-hover:opacity-100 transition-all" />
             {cartCount > 0 && (
               <span className="absolute -top-1.5 -right-1.5 bg-[#D4AF37] text-black text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center scale-90">
-                {cartCount}
+                {cartCount > 99 ? '99+' : cartCount}
               </span>
             )}
           </Link>
 
-          {/* User controls / Auth links */}
           {user ? (
             <div className="flex items-center gap-4 border-l border-[#D4AF37]/20 pl-4 md:pl-8">
               {user.role === 'ADMIN' ? (
@@ -84,6 +83,7 @@ export const Navbar: React.FC = () => {
                   to="/admin"
                   className="p-1 hover:text-[#D4AF37] transition-colors"
                   title="Admin Dashboard"
+                  aria-label="Open admin dashboard"
                 >
                   <LayoutDashboard className="w-4 h-4 text-[#D4AF37]" />
                 </Link>
@@ -92,17 +92,18 @@ export const Navbar: React.FC = () => {
                   to="/account"
                   className="p-1 hover:text-[#D4AF37] transition-colors"
                   title="My Account"
+                  aria-label="Open my account"
                 >
                   <UserIcon className="w-4 h-4 opacity-75" />
                 </Link>
               )}
+
               <button
-                onClick={async () => {
-                  await logout()
-                  navigate('/')
-                }}
+                type="button"
+                onClick={handleLogout}
                 className="p-1 hover:text-red-400 transition-colors bg-transparent border-none text-[#F5F5F0]"
                 title="Logout"
+                aria-label="Logout"
               >
                 <LogOut className="w-4 h-4 opacity-60" />
               </button>
@@ -112,16 +113,20 @@ export const Navbar: React.FC = () => {
               to="/login"
               className="flex items-center gap-2 group text-[#F5F5F0] hover:text-[#D4AF37] transition-colors"
               title="Login / Register"
+              aria-label="Open login or register page"
             >
-              <span className="text-[10px] tracking-[0.1em] opacity-60 group-hover:opacity-100 hidden md:inline transition-opacity">ACCOUNT</span>
+              <span className="text-[10px] tracking-[0.1em] opacity-60 group-hover:opacity-100 hidden md:inline transition-opacity">
+                ACCOUNT
+              </span>
               <UserIcon className="w-4 h-4 opacity-70 group-hover:opacity-100 transition-all" />
             </Link>
           )}
         </div>
       </nav>
 
-      {/* Embedded Search Modal */}
       <SearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
     </>
   )
 }
+
+export default Navbar

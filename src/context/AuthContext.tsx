@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react'
+import React, { createContext, useContext, useEffect, useState } from 'react'
 
 export interface User {
   id: string
@@ -6,8 +6,8 @@ export interface User {
   email: string
   phone?: string | null
   role: 'USER' | 'ADMIN'
-  isVerified: boolean
-  createdAt: string
+  isVerified?: boolean
+  createdAt?: string
 }
 
 interface AuthContextType {
@@ -27,14 +27,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const fetchCurrentUser = async () => {
     try {
       const response = await fetch('/api/auth/me', {
-         headers: { 'Accept': 'application/json' }
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+          Accept: 'application/json',
+        },
       })
-      if (response.ok) {
-        const data = await response.json()
-        setUser(data.user || null)
-      } else {
+
+      if (!response.ok) {
         setUser(null)
+        return
       }
+
+      const data = await response.json()
+      setUser(data ?? null)
     } catch (error) {
       console.error('Error fetching current user:', error)
       setUser(null)
@@ -55,7 +61,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       await fetch('/api/auth/logout', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
       })
     } catch (error) {
       console.error('Error logging out:', error)
@@ -69,10 +79,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await fetchCurrentUser()
   }
 
-  return (
-    <AuthContext.Provider value={{ user, isLoading, login, logout, refetch }}>
-      {children}
-    </AuthContext.Provider>
+  return React.createElement(
+    AuthContext.Provider,
+    { value: { user, isLoading, login, logout, refetch } },
+    children
   )
 }
 
