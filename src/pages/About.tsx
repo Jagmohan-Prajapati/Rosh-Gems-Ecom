@@ -1,65 +1,76 @@
-import React from 'react'
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+import React from "react";
+import { Link } from "react-router-dom";
 
 export const About: React.FC = () => {
   return (
-    <div className="pt-32 pb-24 px-6 md:px-12 max-w-5xl mx-auto min-h-screen">
-      {/* Decorative Line Indicator */}
-      <span className="text-[10px] uppercase tracking-[0.4em] text-[#D4AF37] block mb-4 font-semibold">THE ROSHGEMS LINEAGE</span>
-      
-      {/* Editorial Title */}
-      <h1 className="text-4xl md:text-6xl font-headline italic leading-tight mb-8">
-        Crafting Legacies of <span className="text-[#D4AF37]">Light & Stone</span>
-      </h1>
-      
-      <div className="w-20 h-[1px] bg-[#D4AF37]/50 mb-12"></div>
+    <div className="bg-surface text-on-surface antialiased">
+      <main className="max-w-[1440px] mx-auto px-6 md:px-12 py-16">
+        
+        {/* Editorial Story Header */}
+        <header className="mb-20 text-center max-w-3xl mx-auto space-y-6">
+          <span className="font-label uppercase tracking-[0.3em] text-secondary text-xs font-bold block">
+            Our Ancestral Heritage
+          </span>
+          <h1 className="text-5xl md:text-7xl font-serif text-[#31032c] tracking-tight leading-tight">
+            Curating Earth's <br /><span className="italic">Soulful Light</span>
+          </h1>
+          <div className="h-px w-24 bg-secondary mx-auto mt-6" />
+          <p className="text-on-surface-variant text-base md:text-lg italic font-serif leading-relaxed">
+            "Since 1984, our mission has transcended the metrics of mere carat weight. We seek the unique internal soul, inclusions, and refractions of rare specimens."
+          </p>
+        </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-12 text-sm leading-relaxed text-[#F5F5F0]/80">
-        <div className="space-y-6">
-          <p className="text-lg font-headline italic text-[#F5F5F0] leading-relaxed">
-            Founded in the historic heart of Jaipur, Rajasthan in 1984, RoshGems has spent over four decades curating precious minerals of incomparable rarity and clarity.
-          </p>
-          <p>
-            Jaipur is renowned globally as the epicenter of gemstone cutting and craftsmanship. Within this energetic environment, our founding elders established a small private atelier dedicated exclusively to natural, unheated, GIA certified emeralds, sapphires, and rubies.
-          </p>
-          <p>
-            Unlike mass-production jewel houses, we treat each raw mineral crystal as an intricate narrative written by the earth over millions of years. Our master lapidaries study the crystallization axis of every specimen for weeks before a single touch of the wheel, ensuring the stone's internal soul shines unmuted.
-          </p>
-        </div>
-        <div className="space-y-6">
-          <div className="aspect-[4/5] bg-[#121412] border border-[#D4AF37]/20 flex items-center justify-center overflow-hidden h-72 relative rounded-lg">
-            <img 
-              src="https://images.unsplash.com/photo-1599643477877-530eb83abc8e?auto=format&fit=crop&q=80&w=600" 
-              alt="Artisanal gemstone grading" 
-              className="w-full h-full object-cover opacity-65"
+        {/* Asymmetric Brand Story Section 1 */}
+        <section className="grid grid-cols-1 lg:grid-cols-12 gap-16 items-center mb-32">
+          <div className="lg:col-span-6 rounded-none overflow-hidden shadow-2xl relative border border-[#31032c]/10 bg-white p-2.5">
+            <img
+              alt="Artisanal bench jeweler sketches and gemstone specimens under warm lighting"
+              className="w-full h-auto object-cover transform hover:scale-[1.01] transition-transform duration-700"
+              src="https://lh3.googleusercontent.com/aida-public/AB6AXuAfFIXj8brOspMrfKSC-PYwFzlTumZrh5jI_mLsQMPTf0xu3WYwnP37FU9tjnFV2UAWKSrBpXOaA2z5q-d-d8hJs6koeVA2_4dnSjSRQ5rkOlujhELEGjQ1F6b0dU2kyXM-ZAqBNbnd1AGv7or7MRV1E0RXJytTs1GfvmCjI5pm55hCfMIe8TqqrJxyzoM_X9p8nB_g12rLwYFdhbaSrzcSpm9gfSnM9cvKnVwnoLYsgmi68Z-uPIayPXKSh-Uiz7cSP3OyHt751GAJ"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-[#050705] via-transparent to-transparent"></div>
-            <span className="absolute bottom-4 left-4 text-[9px] uppercase tracking-widest text-[#D4AF37] bg-[#050705]/90 px-3 py-1.5 border border-[#D4AF37]/20">JAIPUR ATELIER 1984</span>
           </div>
-          <p className="">
-            Today, RoshGems has evolved into a premier bespoke concierge, bringing Jaipur's ancient gemstone cutting heritage directly to the modern client. Our promise remains immutable: handpicked mineral authenticity, fully transparent certification, and bespoke master craftsmanship.
-          </p>
-          <p className="text-[#D4AF37] font-headline text-lg italic">
-            "We do not create beauty. We carve the windows that allow its light to run free."
-          </p>
-        </div>
-      </div>
+          <div className="lg:col-span-6 space-y-8">
+            <h2 className="text-4xl text-[#31032c] font-serif italic">The Art of Sourcing</h2>
+            <p className="text-[#4f434b] text-sm tracking-wide leading-loose font-light">
+              RoshGems operates under a strict pledge of transparent mineral commerce. We build deep partnerships directly with sustainable mining guilds in Colombia, kashmir deposits, and Madagascar. By completely bypassing secondary trade layers, we ensure that maximum economic value goes straight to the local digging and cutting clusters.
+            </p>
+            <p className="text-[#4f434b] text-sm tracking-wide leading-loose font-light">
+              Every emerald, sapphire, and tourmaline crystal is registered under GIA and appraisal certifications, carrying transparent source country histories registered to your final collection portfolio.
+            </p>
+          </div>
+        </section>
 
-      {/* Rarity & Standard Grid */}
-      <div className="mt-20 grid grid-cols-1 md:grid-cols-3 gap-8 pt-12 border-t border-[#D4AF37]/10">
-        <div className="space-y-2">
-          <h3 className="text-[#D4AF37] font-headline text-2xl italic">100% Genuine Certified</h3>
-          <p className="opacity-60 text-xs">Every gem leaving the Jaipur vault is accompanied by authentic laboratory certifications (GIA, IGI, or equal standards) outlining its flawless genealogy.</p>
-        </div>
-        <div className="space-y-2">
-          <h3 className="text-[#D4AF37] font-headline text-2xl italic">Bespoke Setting</h3>
-          <p className="opacity-60 text-xs">Through our personal concierge services, your selected gemstones can be set in custom-casted 18k white gold, yellow gold, or platinum mounts.</p>
-        </div>
-        <div className="space-y-2">
-          <h3 className="text-[#D4AF37] font-headline text-2xl italic">Insured Logistics</h3>
-          <p className="opacity-60 text-xs">All purchases are packed with premium security seals and shipped across the Indian subcontinent using secure, fully insured luxury couriers.</p>
-        </div>
-      </div>
+        {/* Asymmetric Section 2: Craftsmanship */}
+        <section className="grid grid-cols-1 lg:grid-cols-12 gap-16 items-center mb-32">
+          <div className="lg:col-span-6 lg:order-2 rounded-none overflow-hidden shadow-2xl relative border border-[#31032c]/10 bg-white p-2.5">
+            <img
+              alt="Sustainability-aware gemstone digging mines matching geological care"
+              className="w-full h-auto object-cover transform hover:scale-[1.01] transition-transform duration-700"
+              src="https://lh3.googleusercontent.com/aida-public/AB6AXuCTei7CRren2b2wvwoQd303617x2RFFaNzboNnLxm8AVEBnUs_ODHs6tMy8hi7MBMAQu0OaOeJ9nrnbOwZjtw0R6Tpul8-hxdl1RFblU6QCyDXha52F2TJIHkQZBwnkMZWcoO9et84IuZFIRGk11Fhkm11B8tNqvLCBXQfK3fp7qf-N2yLAb1qLa98LrYiY58UhX6lMruuqrcHoSCCbuPRbiI4F_hUBtQZ8cru11MIkQHJlU46leRjxaWV3eAgfU2pPm_RbmOR-YPqs"
+            />
+          </div>
+          <div className="lg:col-span-6 lg:order-1 space-y-8">
+            <h2 className="text-4xl text-[#31032c] font-serif italic">Jaipur & London Ateliers</h2>
+            <p className="text-[#4f434b] text-sm tracking-wide leading-loose font-light">
+              Once sourced, raw specimens travel to our twin ateliers in Jaipur and London. It is here that master lapidaries study the crystallization patterns of each mineral. Instead of standard cookie-cutter commercial facets, our bench cutters use traditional hand-hammered and diamond-wheeled processes to preserve the specimen's unique internal glow.
+            </p>
+            <p className="text-[#4f434b] text-sm tracking-wide leading-loose font-light">
+              From our signature rose-gold facet mount settings to hand-hammered 22k gold cuffs, each creation is a unique, unrepeatable heirloom honoring centuries of Indian and European haute-joaillerie heritage.
+            </p>
+            <div className="pt-4 font-sans text-xs tracking-widest uppercase">
+              <Link to="/shop" className="px-8 py-4 bg-[#31032c] text-[#fcf9f4] hover:bg-[#8f4c30] transition-colors rounded-none font-bold tracking-widest block text-center md:inline-block">
+                Examine Active Specimens
+              </Link>
+            </div>
+          </div>
+        </section>
+
+      </main>
     </div>
-  )
-}
-export default About
+  );
+};

@@ -1,123 +1,95 @@
-import React from 'react'
-import { Link } from 'react-router-dom'
-import { Mail, Phone, MapPin, Sparkles } from 'lucide-react'
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+import React, { useState } from "react";
+import { Link, useLocation } from "react-router-dom";
 
 export const Footer: React.FC = () => {
+  const [email, setEmail] = useState("");
+  const [subscribed, setSubscribed] = useState(false);
+  const location = useLocation();
+
+  if (location.pathname.startsWith("/admin")) {
+    return null;
+  }
+
+  const handleSubscribe = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (email.trim()) {
+      setSubscribed(true);
+      setEmail("");
+    }
+  };
+
   return (
-    <footer className="bg-[#050705] border-t border-[#D4AF37]/20 text-[#F5F5F0]">
-      {/* Rich Footer Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-12 px-6 md:px-12 py-16 w-full max-w-7xl mx-auto text-xs font-light tracking-wide">
-        {/* Brand Column */}
+    <footer className="bg-[#f0ede9] dark:bg-stone-900 w-full py-20 px-6 md:px-12 mt-20 border-t border-[#31032c]/5 transition-all">
+      <div className="max-w-[1920px] mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 items-start">
         <div className="space-y-6">
-          <Link to="/" className="text-2xl font-headline italic tracking-[0.15em] text-[#D4AF37] block">
-            ROSHGEMS
-          </Link>
-          <p className="opacity-50 leading-relaxed font-light">
-            Sourced from Jaipur's ancient jewel ateliers. Curating luxury certified gemstones and custom ornaments for collectors with exceptional taste.
+          <span className="font-serif italic text-[#31032c] dark:text-fuchsia-300 text-2xl block">
+            RoshGems Digital Atélier
+          </span>
+          <p className="text-[#4f434b] dark:text-stone-300 text-sm leading-relaxed font-serif italic max-w-xs">
+            Curating the world's most evocative gemstones since 1984. Our legacy is written in the refraction of every unique facet.
           </p>
-          <div className="flex gap-4 items-center opacity-60">
-            <Sparkles className="w-4 h-4 text-[#D4AF37]" />
-            <span className="text-[10px] uppercase tracking-[0.2em]">100% Certified Originals</span>
-          </div>
         </div>
 
-        {/* Explore Links */}
-        <div className="space-y-6">
-          <h4 className="text-[10px] uppercase tracking-[0.3em] font-semibold text-[#D4AF37]">The Collections</h4>
-          <ul className="space-y-3">
-            <li>
-              <Link to="/shop?category=Rings" className="opacity-60 hover:opacity-100 hover:text-[#D4AF37] transition-all">
-                RARE RINGS
-              </Link>
-            </li>
-            <li>
-              <Link to="/shop?category=Necklaces" className="opacity-60 hover:opacity-100 hover:text-[#D4AF37] transition-all">
-                HERITAGE NECKLACES
-              </Link>
-            </li>
-            <li>
-              <Link to="/shop?category=Raw Stones" className="opacity-60 hover:opacity-100 hover:text-[#D4AF37] transition-all">
-                UNMUTED RAW STONES
-              </Link>
-            </li>
-            <li>
-              <Link to="/shop" className="opacity-60 hover:opacity-100 hover:text-[#D4AF37] transition-all underline underline-offset-4">
-                EXPLORE CATALOGUE
-              </Link>
-            </li>
-          </ul>
+        <div className="flex flex-col gap-4 font-sans text-xs tracking-widest uppercase">
+          <span className="text-[#31032c] dark:text-fuchsia-400 font-bold mb-2">Heritage Atélier</span>
+          <Link to="/about" className="text-[#4f434b] dark:text-stone-300 hover:text-[#8f4c30] transition-colors">Our Story</Link>
+          <Link to="/shop" className="text-[#4f434b] dark:text-stone-300 hover:text-[#8f4c30] transition-colors">Collections</Link>
+          <Link to="/about" className="text-[#4f434b] dark:text-stone-300 hover:text-[#8f4c30] transition-colors">Ethical Sourcing</Link>
+          <Link to="/contact" className="text-[#4f434b] dark:text-stone-300 hover:text-[#8f4c30] transition-colors">Bespoke Design</Link>
         </div>
 
-        {/* Legal Policies (Required in routes) */}
-        <div className="space-y-6">
-          <h4 className="text-[10px] uppercase tracking-[0.3em] font-semibold text-[#D4AF37]">Policy Board</h4>
-          <ul className="space-y-3">
-            <li>
-              <Link to="/privacy-policy" className="opacity-60 hover:opacity-100 hover:text-[#D4AF37] transition-all">
-                PRIVACY DISCLOSURE
-              </Link>
-            </li>
-            <li>
-              <Link to="/shipping-policy" className="opacity-60 hover:opacity-100 hover:text-[#D4AF37] transition-all">
-                SHIPPING & CARRIAGE
-              </Link>
-            </li>
-            <li>
-              <Link to="/refund-policy" className="opacity-60 hover:opacity-100 hover:text-[#D4AF37] transition-all">
-                RETURNS & SATISFACTION
-              </Link>
-            </li>
-            <li>
-              <Link to="/about" className="opacity-60 hover:opacity-100 hover:text-[#D4AF37] transition-all">
-                OUR LINEAGE
-              </Link>
-            </li>
-          </ul>
+        <div className="flex flex-col gap-4 font-sans text-xs tracking-widest uppercase">
+          <span className="text-[#31032c] dark:text-fuchsia-400 font-bold mb-2">Assistance</span>
+          <Link to="/shipping-policy" className="text-[#4f434b] dark:text-stone-300 hover:text-[#8f4c30] transition-colors">Insured Shipping</Link>
+          <Link to="/refund-policy" className="text-[#4f434b] dark:text-stone-300 hover:text-[#8f4c30] transition-colors">Returns & Refunds</Link>
+          <Link to="/privacy-policy" className="text-[#4f434b] dark:text-stone-300 hover:text-[#8f4c30] transition-colors">Privacy Charter</Link>
+          <Link to="/contact" className="text-[#4f434b] dark:text-stone-300 hover:text-[#8f4c30] transition-colors">Concierge Helpline</Link>
         </div>
 
-        {/* Contact/Address Column */}
         <div className="space-y-6">
-          <h4 className="text-[10px] uppercase tracking-[0.3em] font-semibold text-[#D4AF37]">The Jaipur Atelier</h4>
-          <div className="space-y-3 opacity-60">
-            <div className="flex items-start gap-2.5">
-              <MapPin className="w-3.5 h-3.5 mt-0.5 text-[#D4AF37] flex-shrink-0" />
-              <span>102 Johari Bazaar, Jaipur, RJ 302003</span>
-            </div>
-            <div className="flex items-center gap-2.5">
-              <Phone className="w-3.5 h-3.5 text-[#D4AF37] flex-shrink-0" />
-              <span>+91 141 2345 678</span>
-            </div>
-            <div className="flex items-center gap-2.5">
-              <Mail className="w-3.5 h-3.5 text-[#D4AF37] flex-shrink-0" />
-              <span className="break-all">roshgems@gmail.com</span>
-            </div>
-          </div>
+          <span className="text-[#31032c] dark:text-fuchsia-400 font-semibold text-xs tracking-widest uppercase block mb-2">
+            The newsletter
+          </span>
+          <p className="text-[#4f434b] dark:text-stone-300 text-xs leading-relaxed uppercase tracking-widest">
+            Receive private invitations to seasonal curations and bespoke atélier arrivals.
+          </p>
+          {subscribed ? (
+            <p className="text-secondary font-serif italic text-xs">
+              Thank you, our concierge will be in touch shortly.
+            </p>
+          ) : (
+            <form onSubmit={handleSubscribe} className="relative border-b border-[#31032c] dark:border-white/20 py-2">
+              <input
+                className="w-full bg-transparent text-xs tracking-widest focus:outline-none focus:ring-0 border-0 p-0 text-primary-container placeholder:text-[#31032c]/40"
+                placeholder="YOUR EMAIL"
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+              <button type="submit" className="absolute right-0 bottom-2 text-[#31032c] hover:text-[#8f4c30] cursor-pointer" aria-label="Subscribe">
+                <span className="material-symbols-outlined text-lg select-none">arrow_forward</span>
+              </button>
+            </form>
+          )}
         </div>
       </div>
 
-      {/* Sub-Footer / Promo Bar from Design Template */}
-      <div className="h-auto py-4 md:py-0 md:h-12 px-6 md:px-12 flex flex-col md:flex-row items-center justify-between border-t border-[#D4AF37]/20 bg-[#080a08] text-[9px] uppercase tracking-[0.2em] font-medium gap-3 md:gap-0">
-        <div className="flex items-center gap-2 md:gap-6 text-center md:text-left">
-          <span className="text-[#D4AF37]">Complimentary Carriage</span>
-          <span className="opacity-30 italic normal-case tracking-normal">Across India on orders over ₹4,000</span>
-        </div>
-        <div className="text-[9px] opacity-40">
-          © 2026 ROSHGEMS. ALL RIGHTS RESERVED.
-        </div>
-        <div className="flex items-center gap-6 md:gap-12">
-          <div className="flex items-center gap-2">
-            <span className="opacity-40">CURRENCY:</span>
-            <span className="text-[#D4AF37]">INR (₹)</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="opacity-40">SUPPORT:</span>
-            <a href="mailto:roshgems@gmail.com" className="hover:text-[#D4AF37] transition-colors cursor-pointer text-[#F5F5F0]">
-              ROSHGEMS@GMAIL.COM
-            </a>
-          </div>
+      <div className="max-w-[1920px] mx-auto mt-16 pt-8 border-t border-[#31032c]/10 flex flex-col md:flex-row justify-between items-center gap-6">
+        <p className="text-[#4f434b] dark:text-stone-400 text-[10px] tracking-[0.3em] uppercase">
+          © 2026 RoshGems Digital Atélier. Indian Luxury Heritage. All rights reserved.
+        </p>
+        <div className="flex gap-8 text-[#31032c] dark:text-stone-400">
+          <span className="material-symbols-outlined text-lg cursor-pointer hover:text-[#8f4c30]">public</span>
+          <span className="material-symbols-outlined text-lg cursor-pointer hover:text-[#8f4c30]">chat_bubble</span>
+          <span className="material-symbols-outlined text-lg cursor-pointer hover:text-[#8f4c30]">photo_camera</span>
         </div>
       </div>
     </footer>
-  )
-}
-export default Footer
+  );
+};

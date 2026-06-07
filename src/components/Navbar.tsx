@@ -1,132 +1,86 @@
-import React, { useState } from 'react'
-import { NavLink, Link, useNavigate } from 'react-router-dom'
-import { Search, ShoppingBag, User as UserIcon, LogOut, LayoutDashboard } from 'lucide-react'
-import { useCartStore } from '../store/cartStore'
-import { useAuth } from '../context/AuthContext'
-import { SearchModal } from './SearchModal'
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+import React from "react";
+import { Link, useLocation } from "react-router-dom";
+import { useAuth } from "../lib/AuthContext";
+import { useCart } from "../lib/CartContext";
 
 export const Navbar: React.FC = () => {
-  const [isSearchOpen, setIsSearchOpen] = useState(false)
-  const cartItems = useCartStore((state) => state.items)
-  const cartCount = cartItems.reduce((sum, item) => sum + item.quantity, 0)
-  const { user, logout } = useAuth()
-  const navigate = useNavigate()
+  const { user, logout } = useAuth();
+  const { items } = useCart();
+  const location = useLocation();
 
-  const navLinkClass = ({ isActive }: { isActive: boolean }) =>
-    `text-xs uppercase tracking-[0.3em] font-medium transition-all ${
-      isActive ? 'text-[#D4AF37] opacity-100' : 'opacity-70 hover:opacity-100'
-    }`
+  const cartCount = items.reduce((sum, item) => sum + item.quantity, 0);
 
-  const handleLogout = async () => {
-    await logout()
-    navigate('/', { replace: true })
+  // If we are on admin screens, do not render public navbar (admin has its own sidebar layout)
+  if (location.pathname.startsWith("/admin")) {
+    return null;
   }
 
+  const linkClass = (path: string) => {
+    const base = "font-serif tracking-[0.05em] leading-tight text-xs uppercase transition-colors duration-300 ";
+    if (location.pathname === path) {
+      return base + "text-[#31032c] border-b-2 border-[#8f4c30] pb-1 font-bold";
+    }
+    return base + "text-[#4f434b] hover:text-[#31032c]";
+  };
+
   return (
-    <>
-      <nav className="fixed top-0 left-0 right-0 h-20 px-6 md:px-12 bg-[#050705]/80 backdrop-blur-xl flex items-center justify-between border-b border-[#D4AF37]/20 z-40">
-        <div className="flex items-center gap-4 md:gap-8">
-          <NavLink to="/shop" className={navLinkClass}>
-            Shop Gems
-          </NavLink>
-
-          <NavLink to="/about" className={navLinkClass}>
-            About
-          </NavLink>
-
-          <NavLink to="/contact" className={navLinkClass}>
-            Contact
-          </NavLink>
-        </div>
-
-        <Link
-          to="/"
-          className="absolute left-1/2 -translate-x-1/2 text-2xl md:text-3.5xl font-headline tracking-[0.15em] text-[#D4AF37] hover:brightness-110 transition-all font-light"
-          aria-label="RoshGems home"
-        >
-          ROSHGEMS
+    <nav className="sticky top-0 w-full z-50 flex items-center justify-between px-6 md:px-12 bg-[#fcf9f4]/90 backdrop-blur-md shadow-[0_4px_30px_rgba(49,3,44,0.03)] border-b border-[#31032c]/10 transition-all duration-300 h-20">
+      <div className="flex items-center gap-6 md:gap-12">
+        <Link to="/" className="text-2xl md:text-3xl font-serif text-[#31032c] tracking-widest hover:opacity-90 font-medium">
+          RoshGems
         </Link>
-
-        <div className="flex items-center gap-4 md:gap-8">
-          <button
-            type="button"
-            onClick={() => setIsSearchOpen(true)}
-            aria-label="Open search"
-            className="flex items-center gap-2 group cursor-pointer border-none bg-transparent text-[#F5F5F0]"
-          >
-            <span className="text-[10px] tracking-[0.1em] opacity-60 group-hover:opacity-100 hidden md:inline transition-opacity">
-              SEARCH
-            </span>
-            <Search className="w-4 h-4 opacity-70 group-hover:opacity-100 group-hover:text-[#D4AF37] transition-all" />
-          </button>
-
-          <Link
-            to="/cart"
-            aria-label={`Open cart with ${cartCount} item${cartCount === 1 ? '' : 's'}`}
-            className="relative flex items-center gap-2 group cursor-pointer text-[#F5F5F0] hover:text-[#D4AF37] transition-colors"
-          >
-            <span className="text-[10px] tracking-[0.1em] opacity-60 group-hover:opacity-100 hidden md:inline transition-opacity">
-              CART ({cartCount})
-            </span>
-            <ShoppingBag className="w-4 h-4 opacity-70 group-hover:opacity-100 transition-all" />
-            {cartCount > 0 && (
-              <span className="absolute -top-1.5 -right-1.5 bg-[#D4AF37] text-black text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center scale-90">
-                {cartCount > 99 ? '99+' : cartCount}
-              </span>
-            )}
-          </Link>
-
-          {user ? (
-            <div className="flex items-center gap-4 border-l border-[#D4AF37]/20 pl-4 md:pl-8">
-              {user.role === 'ADMIN' ? (
-                <Link
-                  to="/admin"
-                  className="p-1 hover:text-[#D4AF37] transition-colors"
-                  title="Admin Dashboard"
-                  aria-label="Open admin dashboard"
-                >
-                  <LayoutDashboard className="w-4 h-4 text-[#D4AF37]" />
-                </Link>
-              ) : (
-                <Link
-                  to="/account"
-                  className="p-1 hover:text-[#D4AF37] transition-colors"
-                  title="My Account"
-                  aria-label="Open my account"
-                >
-                  <UserIcon className="w-4 h-4 opacity-75" />
-                </Link>
-              )}
-
-              <button
-                type="button"
-                onClick={handleLogout}
-                className="p-1 hover:text-red-400 transition-colors bg-transparent border-none text-[#F5F5F0]"
-                title="Logout"
-                aria-label="Logout"
-              >
-                <LogOut className="w-4 h-4 opacity-60" />
-              </button>
-            </div>
-          ) : (
-            <Link
-              to="/login"
-              className="flex items-center gap-2 group text-[#F5F5F0] hover:text-[#D4AF37] transition-colors"
-              title="Login / Register"
-              aria-label="Open login or register page"
-            >
-              <span className="text-[10px] tracking-[0.1em] opacity-60 group-hover:opacity-100 hidden md:inline transition-opacity">
-                ACCOUNT
-              </span>
-              <UserIcon className="w-4 h-4 opacity-70 group-hover:opacity-100 transition-all" />
+        <div className="hidden lg:flex gap-8 items-center">
+          <Link to="/shop" className={linkClass("/shop")}>Collections</Link>
+          <Link to="/about" className={linkClass("/about")}>Heritage & Sourcing</Link>
+          <Link to="/contact" className={linkClass("/contact")}>Consultation</Link>
+          <Link to="/privacy-policy" className={linkClass("/privacy-policy")}>Privacy</Link>
+          {user?.role === "ADMIN" && (
+            <Link to="/admin" className="font-serif tracking-[0.05em] leading-tight text-xs uppercase text-[#8f4c30] font-bold hover:text-[#31032c] transition-colors">
+              Atélier Admin
             </Link>
           )}
         </div>
-      </nav>
+      </div>
+      
+      <div className="flex items-center gap-6 text-[#31032c]">
+        {/* Navigation items for small viewports */}
+        <div className="flex lg:hidden gap-4 text-xs font-serif italic text-on-surface-variant">
+          <Link to="/shop" className="hover:text-primary">Shop</Link>
+          <Link to="/about" className="hover:text-primary">About</Link>
+        </div>
 
-      <SearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
-    </>
-  )
-}
+        <Link to="/cart" className="relative cursor-pointer hover:scale-105 transition-transform p-1 text-[#31032c]" aria-label="Shopping bag">
+          <span className="material-symbols-outlined select-none text-2xl">shopping_bag</span>
+          {cartCount > 0 && (
+            <span className="absolute top-0 right-0 bg-[#8f4c30] text-[#fcf9f4] text-[9px] w-4 h-4 rounded-full flex items-center justify-center font-bold font-sans">
+              {cartCount}
+            </span>
+          )}
+        </Link>
 
-export default Navbar
+        {user ? (
+          <div className="flex items-center gap-3">
+            <span className="text-[10px] hidden md:inline font-sans uppercase tracking-widest font-semibold text-[#31032c]">
+              Mbr: {user.name.split(" ")[0]}
+            </span>
+            <button 
+              onClick={logout} 
+              className="text-[#4f434b] hover:text-[#8f4c30] text-[10px] font-sans font-bold uppercase tracking-widest cursor-pointer transition-colors"
+            >
+              Sign Out
+            </button>
+          </div>
+        ) : (
+          <Link to="/login" className="flex items-center hover:scale-105 transition-transform p-1 text-[#31032c]" aria-label="User account">
+            <span className="material-symbols-outlined select-none text-2xl">person</span>
+          </Link>
+        )}
+      </div>
+    </nav>
+  );
+};

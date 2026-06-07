@@ -1,162 +1,142 @@
-import React, { useState } from 'react'
-import { Mail, Phone, MapPin, Sparkles } from 'lucide-react'
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+import React, { useState } from "react";
 
 export const Contact: React.FC = () => {
-  const [formSubmitted, setFormSubmitted] = useState(false)
-  const [name, setName] = useState('')
-  const [email, setEmail] = useState('')
-  const [gemInterest, setGemInterest] = useState('Bespoke Bridal Design')
-  const [message, setMessage] = useState('')
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [message, setMessage] = useState("");
+  const [submitted, setSubscribed] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    // Simulated contact submittal
-    if (name && email) {
-      setFormSubmitted(true)
+    e.preventDefault();
+    if (name && email && message) {
+      setSubscribed(true);
+      setName("");
+      setEmail("");
+      setMessage("");
     }
-  }
+  };
 
   return (
-    <div className="pt-32 pb-24 px-6 md:px-12 max-w-5xl mx-auto min-h-screen">
-      <span className="text-[10px] uppercase tracking-[0.4em] text-[#D4AF37] block mb-4 font-semibold">THE CONCIERGE DESK</span>
-      <h1 className="text-4xl md:text-6xl font-headline italic leading-tight mb-8">
-        Seek the <span className="text-[#D4AF37]">Unique Specimen</span>
-      </h1>
-      <div className="w-20 h-[1px] bg-[#D4AF37]/50 mb-12"></div>
-
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-16">
-        {/* Contact info cards */}
-        <div className="md:col-span-5 space-y-10">
-          <p className="text-sm opacity-60 font-light leading-relaxed">
-            Interested in acquiring a highly rare Kashmiri Emerald, Ceylon Sapphire, or commissioning a bespoke casting design? Reach out to our specialized curation coordinators.
+    <div className="bg-surface text-on-surface antialiased">
+      <main className="max-w-[1440px] mx-auto px-6 md:px-12 py-16">
+        
+        {/* Contact Page Header */}
+        <header className="mb-20 text-center max-w-3xl mx-auto space-y-6">
+          <span className="font-label uppercase tracking-[0.3em] text-secondary text-xs font-bold block">
+            Bespoke Commissions
+          </span>
+          <h1 className="text-5xl md:text-7xl font-serif text-[#31032c] tracking-tight leading-tight">
+            Consult the Atélier
+          </h1>
+          <div className="h-px w-24 bg-secondary mx-auto mt-6" />
+          <p className="text-on-surface-variant text-base md:text-lg italic font-serif leading-relaxed">
+            "Whether seeking a GIA investment appraisal, selecting a raw specimen, or commissioning a bespoke engagement ring, our chief curators are available for private consultations."
           </p>
+        </header>
 
-          <div className="space-y-6">
-            <div className="flex gap-4 items-start">
-              <div className="w-10 h-10 rounded-full border border-[#D4AF37]/20 flex items-center justify-center text-[#D4AF37] flex-shrink-0">
-                <MapPin className="w-4 h-4" />
-              </div>
-              <div>
-                <h4 className="text-[10px] uppercase tracking-widest text-[#D4AF37] font-semibold mb-1">Our Atelier</h4>
-                <p className="text-xs opacity-75 font-light leading-relaxed">
-                  102 Johari Bazaar, Pink City<br />
-                  Jaipur, Rajasthan, 302003<br />
-                  India
-                </p>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-20 items-stretch">
+          
+          {/* Left Column: Coordinates */}
+          <div className="lg:col-span-5 bg-[#f0ede9] p-10 md:p-12 rounded-none border border-[#31032c]/10 flex flex-col justify-between space-y-12">
+            <div>
+              <h2 className="text-3xl font-serif text-[#31032c] mb-8 font-light">Atélier Coordinates</h2>
+              <div className="space-y-8 font-sans text-sm text-[#4f434b] leading-relaxed">
+                <div>
+                  <p className="font-bold text-[#8f4c30] uppercase tracking-widest text-[10px] mb-2">London Showroom</p>
+                  <p>72 Heritage Lane, Mayfair</p>
+                  <p>London, W1S 2YG</p>
+                  <p className="text-[#31032c] font-semibold mt-2">london@roshgems.com</p>
+                </div>
+                <div>
+                  <p className="font-bold text-[#8f4c30] uppercase tracking-widest text-[10px] mb-2">New York Office</p>
+                  <p>242 Central Park West</p>
+                  <p>New York, NY 10024</p>
+                  <p className="text-[#31032c] font-semibold mt-2">nyc@roshgems.com</p>
+                </div>
+                <div>
+                  <p className="font-bold text-[#8f4c30] uppercase tracking-widest text-[10px] mb-2">Concierge Helpline</p>
+                  <p>Live Curator Assistance: Monday - Friday (9AM - 6PM GMT)</p>
+                  <p className="font-bold text-[#31032c] mt-1">+44 20 7946 0123</p>
+                </div>
               </div>
             </div>
 
-            <div className="flex gap-4 items-start">
-              <div className="w-10 h-10 rounded-full border border-[#D4AF37]/20 flex items-center justify-center text-[#D4AF37] flex-shrink-0">
-                <Phone className="w-4 h-4" />
-              </div>
-              <div>
-                <h4 className="text-[10px] uppercase tracking-widest text-[#D4AF37] font-semibold mb-1">Direct Calling</h4>
-                <p className="text-xs opacity-75 font-light">
-                  +91 141 2345 678<br />
-                  <span className="opacity-50 text-[10px]">Hours: Mon – Sat, 10:00 – 19:00 IST</span>
-                </p>
-              </div>
-            </div>
-
-            <div className="flex gap-4 items-start">
-              <div className="w-10 h-10 rounded-full border border-[#D4AF37]/20 flex items-center justify-center text-[#D4AF37] flex-shrink-0">
-                <Mail className="w-4 h-4" />
-              </div>
-              <div>
-                <h4 className="text-[10px] uppercase tracking-widest text-[#D4AF37] font-semibold mb-1">Email Concierge</h4>
-                <p className="text-xs opacity-75 font-light">
-                  roshgems@gmail.com<br />
-                  <span className="opacity-50 text-[10px]">Typical response within 12 business hours</span>
-                </p>
-              </div>
+            <div className="p-6 bg-[#fcf9f4] rounded-none border border-[#31032c]/10 flex items-start gap-4 font-sans select-none">
+              <span className="material-symbols-outlined text-[#8f4c30] select-none text-xl">verified_user</span>
+              <p className="text-[10px] text-[#4f434b]/80 leading-relaxed uppercase tracking-wider font-bold">
+                Consultations are entirely confidential. Virtual high-definition specimen viewings are available on demand.
+              </p>
             </div>
           </div>
-        </div>
 
-        {/* Contact form column */}
-        <div className="md:col-span-7 bg-[#121412] border border-[#D4AF37]/10 p-8 md:p-10 rounded-xl relative overflow-hidden">
-          {formSubmitted ? (
-            <div className="py-16 text-center space-y-6">
-              <div className="w-16 h-16 rounded-full border border-[#D4AF37] mx-auto flex items-center justify-center text-[#D4AF37]">
-                <Sparkles className="w-6 h-6 animate-pulse" />
+          {/* Right Column: Connection Form */}
+          <div className="lg:col-span-7 bg-white p-10 md:p-12 rounded-none border border-[#31032c]/10 shadow-sm font-sans">
+            <h2 className="text-3xl font-serif text-[#31032c] mb-2 font-light">Inquire Online</h2>
+            <p className="text-[#4f434b]/80 text-sm italic mb-10 font-serif">A senior gemologist will respond within 24 hours.</p>
+
+            {submitted ? (
+              <div className="bg-[#f0ede9] border-l-4 border-[#8f4c30] p-8 text-[#31032c] rounded-none space-y-3 font-serif">
+                <h3 className="text-2xl italic font-bold">Inquiry Dispatched Successfully</h3>
+                <p className="text-sm font-sans tracking-wide leading-relaxed">
+                  Thank you for consult inquiry. Our Curators are cross-referencing your request with the archive and will contact you directly.
+                </p>
               </div>
-              <h3 className="font-headline text-3xl italic text-[#D4AF37]">Request Accepted</h3>
-              <p className="text-xs opacity-60 max-w-sm mx-auto leading-relaxed">
-                Thank you, {name}. A senior gemstone evaluator from our Jaipur desk has received your request. We will coordinate a virtual showing or detailed consultation promptly.
-              </p>
-              <button 
-                onClick={() => setFormSubmitted(false)}
-                className="mt-6 px-6 py-2 border border-[#D4AF37]/30 text-[#D4AF37] text-[10px] uppercase tracking-widest hover:bg-[#D4AF37]/10 transition-colors"
-              >
-                Submit another inquiry
-              </button>
-            </div>
-          ) : (
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <h3 className="font-headline text-2xl italic text-[#D4AF37] mb-6">Inquire with the Curation Desk</h3>
+            ) : (
+              <form onSubmit={handleSubmit} className="space-y-8 font-sans">
+                <div className="flex flex-col gap-2">
+                  <label className="text-[10px] uppercase tracking-[0.2em] text-[#4f434b]/65 font-bold">Your Designation (Name)</label>
+                  <input
+                    required
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="bg-transparent border-t-0 border-x-0 border-b border-[#31032c]/20 py-3 focus:outline-none focus:border-secondary transition-colors text-sm font-body font-semibold text-[#31032c]"
+                    placeholder="Evelyn Montgomery"
+                  />
+                </div>
 
-              <div className="space-y-1">
-                <label className="text-[9px] uppercase tracking-widest opacity-50 font-semibold block">Full Name</label>
-                <input 
-                  type="text" 
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  required
-                  placeholder="Julian Abbott"
-                  className="w-full bg-transparent border-b border-[#D4AF37]/20 focus:border-[#D4AF37] focus:ring-0 py-2.5 text-xs tracking-wider outline-none transition-colors"
-                />
-              </div>
+                <div className="flex flex-col gap-2">
+                  <label className="text-[10px] uppercase tracking-[0.2em] text-[#4f434b]/65 font-bold">SMTP Email Coordinate</label>
+                  <input
+                    required
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="bg-transparent border-t-0 border-x-0 border-b border-[#31032c]/20 py-3 focus:outline-none focus:border-secondary transition-colors text-sm font-body font-semibold text-[#31032c]"
+                    placeholder="evelyn@manor.com"
+                  />
+                </div>
 
-              <div className="space-y-1">
-                <label className="text-[9px] uppercase tracking-widest opacity-50 font-semibold block">Email Address</label>
-                <input 
-                  type="email" 
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  placeholder="curator@excellence.com"
-                  className="w-full bg-transparent border-b border-[#D4AF37]/20 focus:border-[#D4AF37] focus:ring-0 py-2.5 text-xs tracking-wider outline-none transition-colors"
-                />
-              </div>
+                <div className="flex flex-col gap-2">
+                  <label className="text-[10px] uppercase tracking-[0.2em] text-[#4f434b]/65 font-bold">Proposed Consultation details</label>
+                  <textarea
+                    required
+                    rows={4}
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    className="bg-transparent border-t-0 border-x-0 border-b border-[#31032c]/20 py-3 focus:outline-none focus:border-secondary transition-colors text-sm font-serif italic text-[#31032c]"
+                    placeholder="Describe the nature of the GIA tourmaline proposal, carat focus or design legacy..."
+                  />
+                </div>
 
-              <div className="space-y-1">
-                <label className="text-[9px] uppercase tracking-widest opacity-50 font-semibold block">Area of Interest</label>
-                <select 
-                  value={gemInterest}
-                  onChange={(e) => setGemInterest(e.target.value)}
-                  className="w-full bg-transparent border-b border-[#D4AF37]/20 focus:border-[#D4AF37] focus:ring-0 py-2.5 text-xs tracking-wider outline-none transition-colors cursor-pointer text-[#F5F5F0]"
+                <button
+                  type="submit"
+                  className="w-full bg-[#31032c] hover:bg-[#8f4c30] text-white py-5 rounded-none font-bold tracking-[0.2em] uppercase text-xs shadow-md transition-all cursor-pointer font-sans"
                 >
-                  <option className="bg-[#121412]">Bespoke Bridal Design</option>
-                  <option className="bg-[#121412]">Loose Precious Gemstones</option>
-                  <option className="bg-[#121412]">Jaipur Valuation Assessment</option>
-                  <option className="bg-[#121412]">General Inquiry</option>
-                </select>
-              </div>
+                  Dispatch Atélier Inquiry
+                </button>
+              </form>
+            )}
+          </div>
 
-              <div className="space-y-1">
-                <label className="text-[9px] uppercase tracking-widest opacity-50 font-semibold block">Message / Specification Notes</label>
-                <textarea 
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  required
-                  placeholder="Outline the carat weight, cut preferences, or historical provenance requirements..."
-                  rows={4}
-                  className="w-full bg-[#050705]/50 border border-[#D4AF37]/10 rounded-lg p-3 text-xs outline-none focus:border-[#D4AF37] transition-colors"
-                />
-              </div>
-
-              <button 
-                type="submit"
-                className="w-full bg-[#D4AF37] text-black font-semibold text-xs uppercase tracking-[0.2em] py-4 rounded-lg hover:bg-[#B8962F] transition-all"
-              >
-                Transmit Curation Brief
-              </button>
-            </form>
-          )}
         </div>
-      </div>
+
+      </main>
     </div>
-  )
-}
-export default Contact
+  );
+};

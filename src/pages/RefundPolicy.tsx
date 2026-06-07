@@ -1,28 +1,60 @@
-import React from 'react'
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+import React from "react";
 
 export const RefundPolicy: React.FC = () => {
   return (
-    <div className="pt-32 pb-24 px-6 md:px-12 max-w-4xl mx-auto min-h-screen">
-      <span className="text-[10px] uppercase tracking-[0.4em] text-[#D4AF37] block mb-4 font-semibold">SATISFACTION GUARANTEE</span>
-      <h1 className="text-4xl font-headline italic leading-tight text-[#D4AF37] mb-8">Refund & Return Policy</h1>
-      <div className="w-20 h-[1px] bg-[#D4AF37]/40 mb-8"></div>
-      
-      <div className="space-y-6 text-xs md:text-sm leading-relaxed text-[#F5F5F0]/80 font-light">
-        <p className="text-[#F5F5F0]">Last Updated: June 7, 2026</p>
-        <p>At RoshGems, we take immense pride in Jaipur's finest handpicked gemstone specimens. If your custom ornament or loose stone does not perfectly command your satisfaction, we offer structural avenues for exchange and return.</p>
+    <div className="bg-surface text-on-surface antialiased min-h-screen">
+      <main className="max-w-[900px] mx-auto px-6 py-16 md:py-24">
         
-        <h3 className="text-sm uppercase tracking-widest text-[#D4AF37] font-semibold pt-4">1. The 14-Day Vault Review</h3>
-        <p>Clients may request a complete return or replacement within 14 days of tracked delivery. To maintain the secure pedigree of precious specimens, returned gems undergo a rigorous gemstone certification audit by our Jaipur lab curators.</p>
+        {/* Header */}
+        <header className="mb-16 border-b border-primary/10 pb-10">
+          <span className="font-label uppercase tracking-[0.3em] text-secondary text-[10px] font-bold block mb-4">
+            Atélier Standards
+          </span>
+          <h1 className="text-4xl md:text-5xl font-serif text-[#31032c] tracking-tight">
+            Exchange & Appraisal Return Policy
+          </h1>
+          <p className="text-on-surface-variant font-serif italic text-sm mt-3">
+            Bespoke Commissions and Raw Specimens
+          </p>
+        </header>
 
-        <h3 className="text-sm uppercase tracking-widest text-[#D4AF37] font-semibold pt-4">2. Non-Refundable Structural Commissions</h3>
-        <p>Please note that bespoke bridal designs, customized finger castings, or loose stones that have been custom engraved/fitted at the workbench after checking are not eligible for general return. However, our workshop handles adjustments free of fee.</p>
+        {/* Content */}
+        <div className="font-sans text-sm text-on-surface-variant leading-relaxed space-y-8 tracking-wide font-light">
+          <section className="space-y-4">
+            <h2 className="text-2xl font-serif italic text-primary not-italic font-bold">1. Atélier Refund Protocol</h2>
+            <p>
+              At RoshGems, we take infinite pride in the geological specimens and hand-facet craftsmanship of our jewelry. If your curated selection does not live up to your planetary refraction expectations, you may declare a return within 14 days of delivery signature handover.
+            </p>
+          </section>
 
-        <h3 className="text-sm uppercase tracking-widest text-[#D4AF37] font-semibold pt-4">3. Execution of Credits</h3>
-        <p>Once our lab confirms that the returned gemstone matches the exact weight, refractive index, and GIA certificate of sending, a complete credit will be forwarded to your bank account or card via Razorpay within 7 business days.</p>
+          <section className="space-y-4">
+            <h2 className="text-2xl font-serif italic text-primary not-italic font-bold">2. Restrictions on Bespoke Commissions</h2>
+            <p>
+              Please note that custom-facet rings, engraved anniversary messages, bespoke metal adjustments (such as sizing modifications), or items matching direct clientele configurations are categorized as non-refundable once the lapidary cutting bench begins cutting. We are happy to modify or adapt settings for a complimentary lifetime adjust period.
+            </p>
+          </section>
 
-        <p className="pt-6 font-headline italic text-sm text-[#D4AF37]">RoshGems Jaipur satisfaction division</p>
-      </div>
+          <section className="space-y-4">
+            <h2 className="text-2xl font-serif italic text-primary not-italic font-bold">3. Condition and GIA Documentation</h2>
+            <p>
+              To qualify for return processing, specimens must remain absolutely pristine, showing zero signs of physical scratching, micro-impacts, or setting adjustments. Significantly, all returned items must arrive inside our intact packaging accompanied by their respective sealed GIA licenses. Returns lacking authentic identification tags will be returned to the client at their expense.
+            </p>
+          </section>
+
+          <section className="space-y-4">
+            <h2 className="text-2xl font-serif italic text-primary not-italic font-bold">4. Initiating Returns</h2>
+            <p>
+              To declare a return, please contact our Mayfair concierge at concierge@roshgems.com or call our digital line. Once authorized, our staff provides fully paid return security packaging credentials and triggers fully insured courier collection at your home address coordinates. Refund payouts are processed within 7 business days following lab audit verification.
+            </p>
+          </section>
+        </div>
+
+      </main>
     </div>
-  )
-}
-export default RefundPolicy
+  );
+};
