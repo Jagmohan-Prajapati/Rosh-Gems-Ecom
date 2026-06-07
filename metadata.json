@@ -1,0 +1,6 @@
+{
+  "name": "RoshGems",
+  "description": "A luxury gemstone e-commerce platform for the Indian market.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
