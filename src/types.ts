@@ -7,8 +7,8 @@ export interface User {
   id: string;
   name: string;
   email: string;
-  phone?: string;
-  role: "USER" | "ADMIN";
+  phone?: string | null;
+  role: 'USER' | 'ADMIN';
   isVerified: boolean;
   createdAt?: string;
 }
@@ -16,11 +16,11 @@ export interface User {
 export interface Address {
   id: string;
   userId: string;
-  label: string; // e.g. "Home", "Office"
+  label: string;
   name: string;
   phone: string;
   line1: string;
-  line2?: string;
+  line2?: string | null;
   city: string;
   state: string;
   zip: string;
@@ -31,20 +31,29 @@ export interface Address {
 
 export interface Product {
   id: string;
+  refCode?: string;
   name: string;
-  refCode?: string; // e.g. "RG-2024-001"
-  category: "COLLECTIONS" | "BESPOKE" | "HERITAGE" | string;
-  stoneType: "EMERALD" | "SAPPHIRE" | "RUBY" | "DIAMOND" | "AMETHYST" | "AQUAMARINE" | "OPAL" | "MORGANITE" | "TOPAZ" | string;
-  stoneColor: string; // e.g. "Peacock Green", "Royal Blue"
-  price: number;
-  currency?: string; // e.g. "USD", "INR", "EUR", "GBP"
   description: string;
-  story?: string;
+  price: number;
   images: string[];
+  category: string;
+  stoneType: string;
+  stoneColor: string;
+  caratWeight?: number;
+  origin?: string;
+  certification?: string;
   stockQty: number;
-  isFeatured?: boolean;
   isActive?: boolean;
+  isFeatured?: boolean;
   createdAt?: string;
+  currency?: 'INR' | string;
+  story?: string;
+}
+
+export interface OrderItemProduct {
+  id?: string;
+  name: string;
+  images: string[];
 }
 
 export interface OrderItem {
@@ -52,31 +61,51 @@ export interface OrderItem {
   orderId: string;
   productId: string;
   quantity: number;
-  price: number; // Price locked at order time
-  product?: {
-    name: string;
-    images: string[];
-  };
+  price: number;
+  product?: OrderItemProduct;
 }
+
+export interface OrderShippingAddress {
+  label?: string;
+  name: string;
+  phone: string;
+  line1: string;
+  line2?: string | null;
+  city: string;
+  state: string;
+  zip: string;
+  country: string;
+}
+
+export interface OrderUserSummary {
+  name: string;
+  email: string;
+}
+
+export type OrderStatus =
+  | 'PENDING'
+  | 'PROCESSING'
+  | 'SHIPPED'
+  | 'DELIVERED'
+  | 'CANCELLED'
+  | string;
 
 export interface Order {
   id: string;
   userId: string;
+  status: OrderStatus;
   total: number;
   currency: string;
-  shippingAddress: string;
-  status: "PENDING" | "PROCESSING" | "SHIPPED" | "COMPLETED" | "CANCELLED" | string;
+  razorpayOrderId?: string | null;
+  razorpayPaymentId?: string | null;
+  razorpaySignature?: string | null;
+  paymentMethod?: string | null;
   isPaid: boolean;
-  paidAt?: string;
-  razorpayOrderId?: string;
-  razorpayPaymentId?: string;
-  razorpaySignature?: string;
-  trackingId?: string;
-  trackingUrl?: string;
+  paidAt?: string | null;
+  trackingId?: string | null;
+  trackingUrl?: string | null;
+  shippingAddress: OrderShippingAddress;
   createdAt: string;
-  user?: {
-    name: string;
-    email: string;
-  };
+  user?: OrderUserSummary;
   items?: OrderItem[];
 }

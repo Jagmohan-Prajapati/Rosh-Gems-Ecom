@@ -3,18 +3,47 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { useAuth } from "../lib/AuthContext";
+import React, { useMemo, useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import type { User } from "../types";
+
+type LoginMode = "signin" | "signup" | "forgot" | "reset";
+
+interface AuthResponse {
+  user: User;
+}
+
+interface ApiErrorResponse {
+  error?: string;
+  message?: string;
+}
+
+async function parseJsonSafely(response: Response) {
+  try {
+    return await response.json();
+  } catch {
+    return null;
+  }
+}
+
+async function getErrorMessage(response: Response, fallback: string) {
+  const data = (await parseJsonSafely(response)) as ApiErrorResponse | null;
+  return data?.error || data?.message || fallback;
+}
 
 export const Login: React.FC = () => {
-  const { login, sendOtp, verifyOtp, forgotPassword, resetPassword } = useAuth();
+  const { login } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
-  // Mode: "signin" | "signup" | "forgot" | "reset"
-  const [mode, setMode] = useState<"signin" | "signup" | "forgot" | "reset">("signin");
+  const redirectTo = useMemo(() => {
+    const params = new URLSearchParams(location.search);
+    return params.get("redirect") || "/";
+  }, [location.search]);
 
-  // Form states
+  const [mode, setMode] = useState<LoginMode>("signin");
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
@@ -27,20 +56,42 @@ export const Login: React.FC = () => {
   const [err, setErr] = useState("");
   const [msg, setMsg] = useState("");
 
+  const clearNotices = () => {
+    setErr("");
+    setMsg("");
+  };
+
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
+
     if (!email || !password) {
-      setErr("Please specify email and password coordinates.");
+      setErr("Please enter your email and password.");
       return;
     }
+
     setLoading(true);
-    setErr("");
+    clearNotices();
+
     try {
-      await login(email, password);
-      // Wait, is user admin or regular patron? Redirection depends on role
-      navigate("/");
-    } catch (e: any) {
-      setErr(e.message || "Invalid curator credentials.");
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      if (!response.ok) {
+        throw new Error(await getErrorMessage(response, "Invalid email or password."));
+      }
+
+      const data = (await response.json()) as AuthResponse;
+      login(data.user);
+      navigate(redirectTo, { replace: true });
+    } catch (error) {
+      setErr(error instanceof Error ? error.message : "Unable to sign in.");
     } finally {
       setLoading(false);
     }
@@ -48,19 +99,37 @@ export const Login: React.FC = () => {
 
   const handleRequestSignupOtp = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !name || !password) {
-      setErr("Name, email, and password properties are required.");
+
+    if (!name || !email || !password) {
+      setErr("Name, email, and password are required.");
       return;
     }
+
     setLoading(true);
-    setErr("");
-    setMsg("");
+    clearNotices();
+
     try {
-      await sendOtp(email, "VERIFY_EMAIL");
+      const response = await fetch("/api/auth/send-otp", {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          email,
+          type: "VERIFY_EMAIL",
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(await getErrorMessage(response, "Failed to send verification OTP."));
+      }
+
       setOtpSent(true);
-      setMsg("OTP code sent to email inbox. Please inspect your inbox.");
-    } catch (e: any) {
-      setErr(e.message || "Failed to trigger registration PIN.");
+      setMsg("A 6-digit verification code has been sent to your email.");
+    } catch (error) {
+      setErr(error instanceof Error ? error.message : "Failed to send verification OTP.");
     } finally {
       setLoading(false);
     }
@@ -68,23 +137,41 @@ export const Login: React.FC = () => {
 
   const handleVerifySignupOtp = async (e: React.FormEvent) => {
     e.preventDefault();
+
     if (!code) {
-      setErr("Please enter the 6-digit OTP code received.");
+      setErr("Please enter the 6-digit verification code.");
       return;
     }
+
     setLoading(true);
-    setErr("");
+    clearNotices();
+
     try {
-      await verifyOtp({
-        name,
-        email,
-        passwordHash: password,
-        phone,
-        code,
+      const response = await fetch("/api/auth/verify-otp", {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          name,
+          email,
+          password,
+          phone,
+          code,
+        }),
       });
-      navigate("/");
-    } catch (e: any) {
-      setErr(e.message || "Validation key expired or incorrect.");
+
+      if (!response.ok) {
+        throw new Error(await getErrorMessage(response, "OTP verification failed."));
+      }
+
+      const data = (await response.json()) as AuthResponse;
+      login(data.user);
+      navigate("/", { replace: true });
+    } catch (error) {
+      setErr(error instanceof Error ? error.message : "OTP verification failed.");
     } finally {
       setLoading(false);
     }
@@ -92,18 +179,34 @@ export const Login: React.FC = () => {
 
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
+
     if (!email) {
-      setErr("Email is required to verify identity.");
+      setErr("Please enter your registered email.");
       return;
     }
+
     setLoading(true);
-    setErr("");
+    clearNotices();
+
     try {
-      await forgotPassword(email);
+      const response = await fetch("/api/auth/forgot-password", {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({ email }),
+      });
+
+      if (!response.ok) {
+        throw new Error(await getErrorMessage(response, "Unable to send reset code."));
+      }
+
       setMode("reset");
-      setMsg("Recovery code dispatched via SMTP. Inspect your mail.");
-    } catch (e: any) {
-      setErr(e.message || "Recovery failure.");
+      setMsg("A password reset code has been sent to your email.");
+    } catch (error) {
+      setErr(error instanceof Error ? error.message : "Unable to send reset code.");
     } finally {
       setLoading(false);
     }
@@ -111,18 +214,40 @@ export const Login: React.FC = () => {
 
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
+
     if (!code || !newPassword) {
-      setErr("Enter the verification matching code and new password pin.");
+      setErr("Please enter the reset code and your new password.");
       return;
     }
+
     setLoading(true);
-    setErr("");
+    clearNotices();
+
     try {
-      await resetPassword(email, code, newPassword);
+      const response = await fetch("/api/auth/reset-password", {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          email,
+          code,
+          newPassword,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(await getErrorMessage(response, "Password reset failed."));
+      }
+
       setMode("signin");
-      setMsg("Password reset successfully. Enter your new credentials.");
-    } catch (e: any) {
-      setErr(e.message || "Reset request refused.");
+      setCode("");
+      setNewPassword("");
+      setMsg("Password reset successful. Please sign in with your new password.");
+    } catch (error) {
+      setErr(error instanceof Error ? error.message : "Password reset failed.");
     } finally {
       setLoading(false);
     }
@@ -130,71 +255,76 @@ export const Login: React.FC = () => {
 
   return (
     <div className="bg-surface-bright font-body text-on-surface-variant selection:bg-primary-fixed selection:text-primary">
-      <main className="min-h-screen flex flex-col md:flex-row overflow-hidden">
-        
-        {/* Left Column: Branding Showcase */}
-        <section className="relative w-full md:w-1/2 h-64 md:h-screen bg-surface-container overflow-hidden">
+      <main className="flex min-h-screen flex-col overflow-hidden md:flex-row">
+        <section className="relative h-64 w-full overflow-hidden bg-surface-container md:h-screen md:w-1/2">
           <div className="absolute inset-0 z-0">
             <img
-              className="w-full h-full object-cover"
+              className="h-full w-full object-cover"
               alt="Macro photography of raw amethysts"
               src="https://lh3.googleusercontent.com/aida-public/AB6AXuDBXgHAhHsRNDtiMLH3NYbx2gZxAxwCy32_lRV2NZcNfqr0YdiIBKvBdCrTKcep8yVUX_Uj3Zr3aqvlhGcx-bk4xiMup6aeL72-m4iq9eXgVrSxMrDEkSq54wnVvZ2KUJraRGjJKHNW8XnSNocBhUBQerAYwHVR0tcGjfYt0oFi5S698NsijFQ_o7xvt29TGCZPgzKZyHmHKDKtP7423mSDe0fHvJeHXHtMlRwsVMlOb5x4b3dbuVRvs4UMIz9mtiD3WnmOaKQiHmjK"
             />
             <div className="absolute inset-0 bg-primary-container/20 mix-blend-multiply" />
           </div>
-          
-          <div className="relative z-10 h-full flex flex-col justify-between p-12 md:p-20 text-surface-bright">
+
+          <div className="relative z-10 flex h-full flex-col justify-between p-12 text-surface-bright md:p-20">
             <div>
-              <h1 className="text-4xl md:text-5xl font-headline italic tracking-widest leading-tight">
+              <h1 className="font-headline text-4xl italic leading-tight tracking-widest md:text-5xl">
                 RoshGems
               </h1>
-              <p className="mt-4 font-body text-sm tracking-[0.2em] uppercase opacity-80 font-sans">
+              <p className="mt-4 font-sans text-sm uppercase tracking-[0.2em] opacity-80">
                 The Digital Atélier
               </p>
             </div>
-            <div className="max-w-md hidden md:block">
-              <p className="font-headline italic text-2xl leading-relaxed">
+            <div className="hidden max-w-md md:block">
+              <p className="font-headline text-2xl italic leading-relaxed">
                 "Every gemstone tells a story, whispered through light and time."
               </p>
-              <div className="w-16 h-px bg-surface-bright/40 mt-8" />
+              <div className="mt-8 h-px w-16 bg-surface-bright/40" />
             </div>
           </div>
         </section>
 
-        {/* Right Column: Portal Canvas */}
-        <section className="w-full md:w-1/2 min-h-screen flex items-center justify-center bg-surface-container-lowest p-8 md:p-12">
+        <section className="flex min-h-screen w-full items-center justify-center bg-surface-container-lowest p-8 md:w-1/2 md:p-12">
           <div className="w-full max-w-md space-y-12">
-            
-            {/* Notices */}
             {err && (
-              <div className="bg-red-50 border-l-4 border-red-400 p-4 text-red-700 text-xs font-sans">
+              <div className="border-l-4 border-red-400 bg-red-50 p-4 font-sans text-xs text-red-700">
                 {err}
               </div>
             )}
+
             {msg && (
-              <div className="bg-emerald-50 border-l-4 border-[#8f4c30] p-4 text-secondary text-xs font-sans">
+              <div className="border-l-4 border-[#8f4c30] bg-emerald-50 p-4 font-sans text-xs text-secondary">
                 {msg}
               </div>
             )}
 
-            {/* Auth Tab selectors (Only displayed in signin/signup tabs) */}
             {(mode === "signin" || mode === "signup") && (
               <div className="flex gap-8 border-b border-outline-variant/30 font-sans">
                 <button
-                  onClick={() => { setMode("signin"); setErr(""); setMsg(""); }}
-                  className={`pb-4 text-sm font-label uppercase tracking-widest transition-all cursor-pointer ${
+                  type="button"
+                  onClick={() => {
+                    setMode("signin");
+                    setOtpSent(false);
+                    clearNotices();
+                  }}
+                  className={`cursor-pointer pb-4 text-sm uppercase tracking-widest transition-all ${
                     mode === "signin"
-                      ? "text-primary-container border-b-2 border-primary-container font-bold"
+                      ? "border-b-2 border-primary-container font-bold text-primary-container"
                       : "text-on-surface-variant/60 hover:text-primary-container"
                   }`}
                 >
                   Sign In
                 </button>
                 <button
-                  onClick={() => { setMode("signup"); setErr(""); setMsg(""); }}
-                  className={`pb-4 text-sm font-label uppercase tracking-widest transition-all cursor-pointer ${
+                  type="button"
+                  onClick={() => {
+                    setMode("signup");
+                    setOtpSent(false);
+                    clearNotices();
+                  }}
+                  className={`cursor-pointer pb-4 text-sm uppercase tracking-widest transition-all ${
                     mode === "signup"
-                      ? "text-primary-container border-b-2 border-primary-container font-bold"
+                      ? "border-b-2 border-primary-container font-bold text-primary-container"
                       : "text-on-surface-variant/60 hover:text-primary-container"
                   }`}
                 >
@@ -203,11 +333,10 @@ export const Login: React.FC = () => {
               </div>
             )}
 
-            {/* SIGN IN FORM */}
             {mode === "signin" && (
               <form onSubmit={handleSignIn} className="space-y-8 font-sans">
                 <div className="space-y-1">
-                  <label className="block text-[10px] font-label uppercase tracking-[0.2em] text-on-surface-variant/70">
+                  <label className="block text-[10px] uppercase tracking-[0.2em] text-on-surface-variant/70">
                     Email Address
                   </label>
                   <input
@@ -215,20 +344,23 @@ export const Login: React.FC = () => {
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full bg-transparent border-0 border-b border-outline-variant py-3 focus:ring-0 focus:border-primary-container transition-all placeholder:text-on-surface-variant/30 font-body outline-none"
+                    className="w-full border-0 border-b border-outline-variant bg-transparent py-3 font-body outline-none transition-all placeholder:text-on-surface-variant/30 focus:border-primary-container focus:ring-0"
                     placeholder="curator@roshgems.com"
                   />
                 </div>
-                
+
                 <div className="space-y-1">
-                  <div className="flex justify-between items-end">
-                    <label className="block text-[10px] font-label uppercase tracking-[0.2em] text-on-surface-variant/70">
+                  <div className="flex items-end justify-between">
+                    <label className="block text-[10px] uppercase tracking-[0.2em] text-on-surface-variant/70">
                       Password
                     </label>
                     <button
                       type="button"
-                      onClick={() => setMode("forgot")}
-                      className="text-[10px] font-label uppercase tracking-[0.1em] text-secondary hover:text-primary-container transition-colors cursor-pointer select-none font-bold"
+                      onClick={() => {
+                        setMode("forgot");
+                        clearNotices();
+                      }}
+                      className="select-none text-[10px] font-bold uppercase tracking-[0.1em] text-secondary transition-colors hover:text-primary-container"
                     >
                       Forgotten?
                     </button>
@@ -238,7 +370,7 @@ export const Login: React.FC = () => {
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full bg-transparent border-0 border-b border-outline-variant py-3 focus:ring-0 focus:border-primary-container transition-all placeholder:text-on-surface-variant/30 font-body outline-none"
+                    className="w-full border-0 border-b border-outline-variant bg-transparent py-3 font-body outline-none transition-all placeholder:text-on-surface-variant/30 focus:border-primary-container focus:ring-0"
                     placeholder="••••••••"
                   />
                 </div>
@@ -247,10 +379,10 @@ export const Login: React.FC = () => {
                   <button
                     type="submit"
                     disabled={loading}
-                    className="w-full bg-primary-container text-on-primary py-5 rounded-xl font-label uppercase tracking-[0.3em] text-xs hover:opacity-95 transition-all editorial-shadow flex items-center justify-center gap-2 group cursor-pointer font-bold"
+                    className="editorial-shadow group flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-primary-container py-5 text-xs font-bold uppercase tracking-[0.3em] text-on-primary transition-all hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-70"
                   >
                     {loading ? "Verifying..." : "Enter Atélier"}
-                    <span className="material-symbols-outlined text-sm select-none group-hover:translate-x-1 transition-transform">
+                    <span className="material-symbols-outlined text-sm transition-transform group-hover:translate-x-1">
                       arrow_forward
                     </span>
                   </button>
@@ -258,9 +390,11 @@ export const Login: React.FC = () => {
               </form>
             )}
 
-            {/* SIGN UP FORM (Send / Verify OTP flow) */}
             {mode === "signup" && (
-              <form onSubmit={otpSent ? handleVerifySignupOtp : handleRequestSignupOtp} className="space-y-8 font-sans">
+              <form
+                onSubmit={otpSent ? handleVerifySignupOtp : handleRequestSignupOtp}
+                className="space-y-8 font-sans"
+              >
                 {!otpSent ? (
                   <>
                     <div className="space-y-1">
@@ -272,10 +406,11 @@ export const Login: React.FC = () => {
                         type="text"
                         value={name}
                         onChange={(e) => setName(e.target.value)}
-                        className="w-full bg-transparent border-0 border-b border-outline-variant py-3 focus:ring-0 focus:border-primary-container transition-all placeholder:text-on-surface-variant/30 outline-none"
+                        className="w-full border-0 border-b border-outline-variant bg-transparent py-3 outline-none transition-all placeholder:text-on-surface-variant/30 focus:border-primary-container focus:ring-0"
                         placeholder="Evelyn Thorne"
                       />
                     </div>
+
                     <div className="space-y-1">
                       <label className="block text-[10px] uppercase tracking-[0.2em] text-on-surface-variant/70">
                         Email Address
@@ -285,10 +420,11 @@ export const Login: React.FC = () => {
                         type="email"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        className="w-full bg-transparent border-0 border-b border-outline-variant py-3 focus:ring-0 focus:border-primary-container transition-all placeholder:text-on-surface-variant/30 outline-none"
+                        className="w-full border-0 border-b border-outline-variant bg-transparent py-3 outline-none transition-all placeholder:text-on-surface-variant/30 focus:border-primary-container focus:ring-0"
                         placeholder="evelyn@roshgems.com"
                       />
                     </div>
+
                     <div className="space-y-1">
                       <label className="block text-[10px] uppercase tracking-[0.2em] text-on-surface-variant/70">
                         Mobile Number (Optional)
@@ -297,10 +433,11 @@ export const Login: React.FC = () => {
                         type="tel"
                         value={phone}
                         onChange={(e) => setPhone(e.target.value)}
-                        className="w-full bg-transparent border-0 border-b border-outline-variant py-3 focus:ring-0 focus:border-primary-container transition-all placeholder:text-on-surface-variant/30 outline-none"
+                        className="w-full border-0 border-b border-outline-variant bg-transparent py-3 outline-none transition-all placeholder:text-on-surface-variant/30 focus:border-primary-container focus:ring-0"
                         placeholder="+91 99999 88888"
                       />
                     </div>
+
                     <div className="space-y-1">
                       <label className="block text-[10px] uppercase tracking-[0.2em] text-on-surface-variant/70">
                         Desired Password
@@ -310,51 +447,57 @@ export const Login: React.FC = () => {
                         type="password"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        className="w-full bg-transparent border-0 border-b border-outline-variant py-3 focus:ring-0 focus:border-primary-container transition-all placeholder:text-on-surface-variant/30 outline-none"
+                        className="w-full border-0 border-b border-outline-variant bg-transparent py-3 outline-none transition-all placeholder:text-on-surface-variant/30 focus:border-primary-container focus:ring-0"
                         placeholder="••••••••"
                       />
                     </div>
+
                     <div className="pt-4">
                       <button
                         type="submit"
                         disabled={loading}
-                        className="w-full bg-primary-container text-on-primary py-5 rounded-xl font-label uppercase tracking-[0.3em] text-xs hover:opacity-95 transition-all editorial-shadow flex items-center justify-center gap-2 cursor-pointer font-bold animate-pulse"
+                        className="editorial-shadow flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-primary-container py-5 text-xs font-bold uppercase tracking-[0.3em] text-on-primary transition-all hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-70"
                       >
-                        {loading ? "Sending PIN..." : "Request Email OTP Pin"}
+                        {loading ? "Sending OTP..." : "Request Email OTP"}
                       </button>
                     </div>
                   </>
                 ) : (
                   <>
                     <div className="space-y-1 text-center">
-                      <p className="text-secondary text-xs italic">Email verification PIN dispatched to {email}.</p>
+                      <p className="text-xs italic text-secondary">
+                        Email verification code sent to {email}.
+                      </p>
                     </div>
+
                     <div className="space-y-1">
-                      <label className="block text-[10px] uppercase tracking-[0.2em] text-[#8f4c30] font-bold">
-                        Verification Code (OTP)
+                      <label className="block text-[10px] font-bold uppercase tracking-[0.2em] text-[#8f4c30]">
+                        Verification Code
                       </label>
                       <input
                         required
                         type="text"
+                        inputMode="numeric"
                         value={code}
-                        onChange={(e) => setCode(e.target.value)}
-                        className="w-full bg-transparent border-0 border-b border-secondary py-3 focus:ring-0 text-center tracking-[0.5em] text-3xl font-serif font-bold text-primary placeholder:text-on-surface-variant/20"
+                        onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                        className="w-full border-0 border-b border-secondary bg-transparent py-3 text-center font-serif text-3xl font-bold tracking-[0.5em] text-primary placeholder:text-on-surface-variant/20 focus:ring-0"
                         placeholder="••••••"
                         maxLength={6}
                       />
                     </div>
-                    <div className="pt-4 flex gap-4">
+
+                    <div className="flex gap-4 pt-4">
                       <button
                         type="button"
                         onClick={() => setOtpSent(false)}
-                        className="px-6 py-5 border border-primary/20 text-xs uppercase tracking-widest rounded-xl hover:bg-surface-container font-bold"
+                        className="rounded-xl border border-primary/20 px-6 py-5 text-xs font-bold uppercase tracking-widest hover:bg-surface-container"
                       >
                         Edit Details
                       </button>
                       <button
                         type="submit"
                         disabled={loading}
-                        className="flex-grow bg-primary-container text-on-primary py-5 rounded-xl text-xs uppercase tracking-widest font-bold hover:opacity-95 transition-all shadow-xl"
+                        className="flex-grow rounded-xl bg-primary-container py-5 text-xs font-bold uppercase tracking-widest text-on-primary shadow-xl transition-all hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-70"
                       >
                         {loading ? "Validating..." : "Verify & Complete Signup"}
                       </button>
@@ -364,13 +507,15 @@ export const Login: React.FC = () => {
               </form>
             )}
 
-            {/* FORGOT PASSWORD FORM */}
             {mode === "forgot" && (
               <form onSubmit={handleForgotPassword} className="space-y-8 font-sans">
                 <div>
-                  <h3 className="text-xl font-serif italic text-primary">Recover Atélier Access</h3>
-                  <p className="text-xs text-on-surface-variant mt-2">Enter your email and we'll dispatch reset coordinates.</p>
+                  <h3 className="font-serif text-xl italic text-primary">Recover Atélier Access</h3>
+                  <p className="mt-2 text-xs text-on-surface-variant">
+                    Enter your registered email and we&apos;ll send a reset code.
+                  </p>
                 </div>
+
                 <div className="space-y-1">
                   <label className="block text-[10px] uppercase tracking-[0.2em] text-on-surface-variant/70">
                     Registered Email
@@ -380,67 +525,77 @@ export const Login: React.FC = () => {
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full bg-transparent border-0 border-b border-outline-variant py-3 focus:ring-0 outline-none"
+                    className="w-full border-0 border-b border-outline-variant bg-transparent py-3 outline-none focus:ring-0"
                     placeholder="curator@roshgems.com"
                   />
                 </div>
-                <div className="pt-4 flex gap-4">
+
+                <div className="flex gap-4 pt-4">
                   <button
                     type="button"
-                    onClick={() => setMode("signin")}
-                    className="px-6 py-4 border border-primary/10 rounded-xl text-xs uppercase tracking-widest text-on-surface-variant hover:bg-surface-container font-bold"
+                    onClick={() => {
+                      setMode("signin");
+                      clearNotices();
+                    }}
+                    className="rounded-xl border border-primary/10 px-6 py-4 text-xs font-bold uppercase tracking-widest text-on-surface-variant hover:bg-surface-container"
                   >
                     Back
                   </button>
                   <button
                     type="submit"
                     disabled={loading}
-                    className="flex-grow bg-[#31032c] text-white py-4 rounded-xl text-xs uppercase tracking-widest font-bold hover:opacity-90 shadow-md"
+                    className="flex-grow rounded-xl bg-[#31032c] py-4 text-xs font-bold uppercase tracking-widest text-white shadow-md hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-70"
                   >
-                    {loading ? "Triggering PIN..." : "Send Reset Code"}
+                    {loading ? "Sending..." : "Send Reset Code"}
                   </button>
                 </div>
               </form>
             )}
 
-            {/* RESET PASSWORD FORM */}
             {mode === "reset" && (
               <form onSubmit={handleResetPassword} className="space-y-8 font-sans">
                 <div>
                   <h3 className="text-xl font-serif italic text-[#31032c]">Set New Password</h3>
-                  <p className="text-xs text-on-surface-variant mt-2">Enter the verification key received and your new access password.</p>
+                  <p className="mt-2 text-xs text-on-surface-variant">
+                    Enter the reset code and your new password.
+                  </p>
                 </div>
+
                 <div className="space-y-1">
                   <label className="block text-[10px] uppercase tracking-[0.2em] text-outline">
-                    Verification Code (OTP)
+                    Verification Code
                   </label>
                   <input
                     required
                     type="text"
+                    inputMode="numeric"
                     value={code}
-                    onChange={(e) => setCode(e.target.value)}
-                    className="w-full bg-transparent border-0 border-b border-outline-variant py-3 focus:ring-0 text-center text-xl font-bold tracking-[0.3em]"
+                    onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                    className="w-full border-0 border-b border-outline-variant bg-transparent py-3 text-center text-xl font-bold tracking-[0.3em] focus:ring-0"
                     placeholder="••••••"
+                    maxLength={6}
                   />
                 </div>
+
                 <div className="space-y-1">
                   <label className="block text-[10px] uppercase tracking-[0.2em] text-outline">
-                    New Security Password
+                    New Password
                   </label>
                   <input
                     required
                     type="password"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
-                    className="w-full bg-transparent border-0 border-b border-outline-variant py-3 focus:ring-0 hover:border-primary-container"
+                    className="w-full border-0 border-b border-outline-variant bg-transparent py-3 focus:border-primary-container focus:ring-0"
                     placeholder="••••••••"
                   />
                 </div>
+
                 <div className="pt-4">
                   <button
-                    type="text"
+                    type="submit"
                     disabled={loading}
-                    className="w-full bg-primary-container text-white py-5 rounded-xl text-xs uppercase tracking-widest font-bold hover:opacity-95 shadow-md"
+                    className="w-full rounded-xl bg-primary-container py-5 text-xs font-bold uppercase tracking-widest text-white shadow-md transition-all hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-70"
                   >
                     {loading ? "Resetting..." : "Commit Secure Change"}
                   </button>
@@ -448,24 +603,33 @@ export const Login: React.FC = () => {
               </form>
             )}
 
-            {/* Divider */}
-            <div className="relative flex items-center gap-4 font-sans select-none">
-              <div className="flex-grow h-px bg-outline-variant/30" />
-              <span className="text-[10px] font-label uppercase tracking-widest text-on-surface-variant/40">Secure Sign In</span>
-              <div className="flex-grow h-px bg-outline-variant/30" />
+            <div className="relative flex select-none items-center gap-4 font-sans">
+              <div className="h-px flex-grow bg-outline-variant/30" />
+              <span className="text-[10px] uppercase tracking-widest text-on-surface-variant/40">
+                Secure Sign In
+              </span>
+              <div className="h-px flex-grow bg-outline-variant/30" />
             </div>
 
-            {/* Footer Note */}
-            <p className="text-center text-[10px] font-label leading-relaxed text-on-surface-variant/50 px-8 font-sans">
+            <p className="px-8 text-center font-sans text-[10px] leading-relaxed text-on-surface-variant/50">
               By accessing the atélier, you agree to our{" "}
-              <span className="underline underline-offset-4 decoration-outline-variant/50 hover:text-secondary cursor-pointer">Terms of Service</span>{" "}
+              <Link
+                to="/refund-policy"
+                className="cursor-pointer underline decoration-outline-variant/50 underline-offset-4 hover:text-secondary"
+              >
+                Terms of Service
+              </Link>{" "}
               and{" "}
-              <span className="underline underline-offset-4 decoration-outline-variant/50 hover:text-secondary cursor-pointer">Privacy Policy</span>.
+              <Link
+                to="/privacy-policy"
+                className="cursor-pointer underline decoration-outline-variant/50 underline-offset-4 hover:text-secondary"
+              >
+                Privacy Policy
+              </Link>
+              .
             </p>
-
           </div>
         </section>
-
       </main>
     </div>
   );
