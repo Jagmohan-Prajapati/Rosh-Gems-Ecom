@@ -169,7 +169,7 @@ export const Login: React.FC = () => {
 
       const data = (await response.json()) as AuthResponse;
       login(data.user);
-      navigate("/", { replace: true });
+      navigate(redirectTo, { replace: true });
     } catch (error) {
       setErr(error instanceof Error ? error.message : "OTP verification failed.");
     } finally {

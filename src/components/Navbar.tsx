@@ -4,14 +4,16 @@
  */
 
 import React from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useCartStore } from "../store/cartStore";
+import { ShoppingBag, User } from "lucide-react";
 
 export const Navbar: React.FC = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, isLoading } = useAuth();
   const items = useCartStore((state) => state.items);
   const location = useLocation();
+  const navigate = useNavigate();
 
   const cartCount = items.reduce((sum, item) => sum + item.quantity, 0);
 
@@ -28,6 +30,11 @@ export const Navbar: React.FC = () => {
     }
 
     return base + "text-[#4f434b] hover:text-[#31032c]";
+  };
+
+  const handleLogout = async () => {
+    await logout();
+    navigate("/", { replace: true });
   };
 
   return (
@@ -79,23 +86,35 @@ export const Navbar: React.FC = () => {
           className="relative cursor-pointer p-1 text-[#31032c] transition-transform hover:scale-105"
           aria-label="Shopping bag"
         >
-          <span className="material-symbols-outlined select-none text-2xl">
-            shopping_bag
-          </span>
+          <ShoppingBag className="h-6 w-6" />
           {cartCount > 0 && (
-            <span className="absolute right-0 top-0 flex h-4 w-4 items-center justify-center rounded-full bg-[#8f4c30] text-[9px] font-bold text-[#fcf9f4]">
-              {cartCount}
+            <span className="absolute right-0 top-0 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#8f4c30] px-1 text-[9px] font-bold text-[#fcf9f4]">
+              {cartCount > 99 ? "99+" : cartCount}
             </span>
           )}
         </Link>
 
-        {user ? (
+        {isLoading ? (
+          <div className="h-8 w-16 animate-pulse rounded bg-[#31032c]/5" />
+        ) : user ? (
           <div className="flex items-center gap-3">
-            <span className="hidden text-[10px] font-sans font-semibold uppercase tracking-widest text-[#31032c] md:inline">
+            <Link
+              to="/account"
+              className="hidden text-[10px] font-sans font-semibold uppercase tracking-widest text-[#31032c] transition-colors hover:text-[#8f4c30] md:inline"
+            >
               Mbr: {user.name.split(" ")[0]}
-            </span>
+            </Link>
+
+            <Link
+              to="/account"
+              className="flex items-center p-1 text-[#31032c] transition-transform hover:scale-105 md:hidden"
+              aria-label="My account"
+            >
+              <User className="h-6 w-6" />
+            </Link>
+
             <button
-              onClick={logout}
+              onClick={handleLogout}
               className="cursor-pointer text-[10px] font-sans font-bold uppercase tracking-widest text-[#4f434b] transition-colors hover:text-[#8f4c30]"
             >
               Sign Out
@@ -103,7 +122,7 @@ export const Navbar: React.FC = () => {
           </div>
         ) : (
           <Link
-            to="/login"
+            to={`/login?redirect=${encodeURIComponent(location.pathname)}`}
             className="flex items-center p-1 text-[#31032c] transition-transform hover:scale-105"
             aria-label="User account"
           >
@@ -116,3 +135,5 @@ export const Navbar: React.FC = () => {
     </nav>
   );
 };
+
+export default Navbar;

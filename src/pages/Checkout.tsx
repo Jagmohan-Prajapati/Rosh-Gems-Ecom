@@ -5,6 +5,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import { Lock, ArrowRight, Loader2, BadgeCheck, ShieldCheck } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useCartStore } from "../store/cartStore";
 import type { Address } from "../types";
@@ -357,7 +358,7 @@ export const Checkout: React.FC = () => {
         </Link>
         <div className="flex items-center gap-8 text-xs uppercase tracking-widest text-on-surface-variant">
           <span className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-sm">lock</span>
+            <Lock className="h-4 w-4" />
             Secure Checkout
           </span>
           <Link to="/cart" className="transition-colors hover:text-secondary">
@@ -624,7 +625,7 @@ export const Checkout: React.FC = () => {
                       className="flex cursor-pointer items-center justify-center gap-3 rounded-xl bg-primary-container px-12 py-5 text-xs font-bold uppercase tracking-widest text-on-primary shadow-xl shadow-primary-container/20 transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       Continue to review
-                      <span className="material-symbols-outlined text-sm">arrow_forward</span>
+                      <ArrowRight className="h-4 w-4" />
                     </button>
                   </div>
                 </section>
@@ -696,15 +697,13 @@ export const Checkout: React.FC = () => {
                     >
                       {loading ? (
                         <>
-                          <span className="material-symbols-outlined animate-spin text-sm">
-                            progress_activity
-                          </span>
+                          <Loader2 className="h-4 w-4 animate-spin" />
                           Processing...
                         </>
                       ) : (
                         <>
                           Place Order
-                          <span className="material-symbols-outlined text-sm">verified</span>
+                          <BadgeCheck className="h-4 w-4" />
                         </>
                       )}
                     </button>
@@ -773,9 +772,7 @@ export const Checkout: React.FC = () => {
                 </div>
 
                 <div className="flex items-start gap-4 rounded-lg bg-surface-container-high p-4 font-sans">
-                  <span className="material-symbols-outlined select-none text-secondary">
-                    verified_user
-                  </span>
+                  <ShieldCheck className="h-5 w-5 shrink-0 text-secondary" />
                   <p className="text-[10px] leading-relaxed uppercase tracking-wider text-on-surface-variant">
                     Secure checkout with verified payment processing and insured delivery.
                   </p>
@@ -788,3 +785,5 @@ export const Checkout: React.FC = () => {
     </div>
   );
 };
+
+export default Checkout;

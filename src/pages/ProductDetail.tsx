@@ -5,6 +5,18 @@
 
 import React, { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
+import {
+  ChevronRight,
+  Heart,
+  Sparkles,
+  BadgeCheck,
+  ShieldCheck,
+  Minus,
+  Plus,
+  ChevronDown,
+  ArrowUpRight,
+  Loader2,
+} from "lucide-react";
 import { Product } from "../types";
 import { SAMPLE_PRODUCTS } from "../lib/gemData";
 import { useCartStore } from "../store/cartStore";
@@ -73,9 +85,7 @@ export const ProductDetail: React.FC = () => {
   if (loading) {
     return (
       <div className="flex min-h-[600px] flex-col items-center justify-center">
-        <span className="material-symbols-outlined animate-spin text-4xl text-[#8f4c30]">
-          progress_activity
-        </span>
+        <Loader2 className="h-10 w-10 animate-spin text-[#8f4c30]" />
         <p className="mt-4 font-serif italic text-primary">Unlocking Gemstone Secrets...</p>
       </div>
     );
@@ -115,17 +125,17 @@ export const ProductDetail: React.FC = () => {
   return (
     <div className="bg-surface text-on-surface antialiased">
       <main className="mx-auto max-w-[1440px] px-6 py-8 md:px-12">
-        <nav className="mb-12 flex flex-wrap items-center gap-2 font-sans text-[10px] font-medium uppercase tracking-[0.15em] text-on-surface-variant/60">
+        <nav className="mb-12 flex flex-wrap items-center gap-x-2 gap-y-2 font-sans text-[10px] font-medium uppercase tracking-[0.15em] text-on-surface-variant/60">
           <Link to="/" className="transition-colors hover:text-secondary">
             Home
           </Link>
-          <span className="material-symbols-outlined select-none text-[12px]">chevron_right</span>
+          <ChevronRight className="h-3.5 w-3.5 shrink-0" />
           <Link to="/shop" className="transition-colors hover:text-secondary">
             Collections
           </Link>
-          <span className="material-symbols-outlined select-none text-[12px]">chevron_right</span>
+          <ChevronRight className="h-3.5 w-3.5 shrink-0" />
           <span className="uppercase transition-colors hover:text-secondary">{product.stoneType}</span>
-          <span className="material-symbols-outlined select-none text-[12px]">chevron_right</span>
+          <ChevronRight className="h-3.5 w-3.5 shrink-0" />
           <span className="max-w-xs truncate font-bold text-on-surface-variant">{product.name}</span>
         </nav>
 
@@ -137,24 +147,22 @@ export const ProductDetail: React.FC = () => {
                 className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
                 src={mainImage}
               />
+
               <div className="absolute right-6 top-6 flex flex-col gap-3">
                 <button
                   onClick={() => setWishlisted(!wishlisted)}
                   className="cursor-pointer border border-[#31032c]/10 bg-white/80 p-3 text-[#31032c] shadow-md backdrop-blur-md transition-all hover:bg-white"
                   aria-label="Wishlist this item"
                 >
-                  <span
-                    className="material-symbols-outlined select-none"
-                    style={{ fontVariationSettings: wishlisted ? "'FILL' 1" : "'FILL' 0" }}
-                  >
-                    favorite
-                  </span>
+                  <Heart
+                    className={`h-5 w-5 ${wishlisted ? "fill-current text-[#8f4c30]" : ""}`}
+                  />
                 </button>
               </div>
             </div>
 
             {product.images.length > 0 && (
-              <div className="grid grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
                 {product.images.map((img, i) => (
                   <div
                     key={i}
@@ -176,17 +184,13 @@ export const ProductDetail: React.FC = () => {
                 {product.images.length < 4 && (
                   <>
                     <div className="flex aspect-square flex-col items-center justify-center overflow-hidden rounded-lg bg-surface-container-low p-2 text-center opacity-60">
-                      <span className="material-symbols-outlined select-none text-[#4A1942]">
-                        auto_awesome
-                      </span>
+                      <Sparkles className="h-5 w-5 text-[#4A1942]" />
                       <span className="mt-1 text-[8px] font-bold uppercase tracking-wider">
                         Refraction Spec
                       </span>
                     </div>
                     <div className="flex aspect-square flex-col items-center justify-center overflow-hidden rounded-lg bg-surface-container-low p-2 text-center opacity-60">
-                      <span className="material-symbols-outlined select-none text-[#4A1942]">
-                        verified
-                      </span>
+                      <BadgeCheck className="h-5 w-5 text-[#4A1942]" />
                       <span className="mt-1 text-[8px] font-bold uppercase tracking-wider">
                         GIA Certified
                       </span>
@@ -205,10 +209,12 @@ export const ProductDetail: React.FC = () => {
                 </span>
                 <div className="h-px flex-1 bg-outline-variant/30" />
               </div>
+
               <h1 className="font-headline text-4xl leading-tight tracking-[0.02em] text-primary md:text-5xl">
                 {product.name}
               </h1>
-              <div className="flex items-baseline gap-4 font-sans">
+
+              <div className="flex flex-wrap items-baseline gap-4 font-sans">
                 <span className="text-3xl font-semibold text-primary-container">
                   {formatPrice(product.price)}
                 </span>
@@ -224,19 +230,17 @@ export const ProductDetail: React.FC = () => {
               <p className="rounded-none border-l-2 border-[#8f4c30]/50 bg-[#f0ede9]/25 py-2 pl-4 font-serif text-lg italic leading-relaxed text-[#4f434b] opacity-90">
                 "{product.story || product.description}"
               </p>
-              <div className="flex flex-wrap gap-3 font-sans">
-                <div className="flex items-center gap-2 border border-[#31032c]/10 bg-[#f0ede9]/40 px-4 py-2">
-                  <span className="material-symbols-outlined select-none text-sm text-[#8f4c30]">
-                    verified_user
-                  </span>
+
+              <div className="flex flex-col gap-3 font-sans sm:flex-row sm:flex-wrap">
+                <div className="flex min-h-[48px] items-center gap-3 border border-[#31032c]/10 bg-[#f0ede9]/40 px-4 py-3">
+                  <ShieldCheck className="h-4 w-4 shrink-0 text-[#8f4c30]" />
                   <span className="text-[10px] font-semibold uppercase tracking-wider text-[#4f434b]">
                     Ethical Lineage Sourced
                   </span>
                 </div>
-                <div className="flex items-center gap-2 border border-[#31032c]/10 bg-[#f0ede9]/40 px-4 py-2">
-                  <span className="material-symbols-outlined select-none text-sm text-[#8f4c30]">
-                    auto_awesome
-                  </span>
+
+                <div className="flex min-h-[48px] items-center gap-3 border border-[#31032c]/10 bg-[#f0ede9]/40 px-4 py-3">
+                  <Sparkles className="h-4 w-4 shrink-0 text-[#8f4c30]" />
                   <span className="text-[10px] font-semibold uppercase tracking-wider text-[#4f434b]">
                     Inspected Appraisal
                   </span>
@@ -244,24 +248,30 @@ export const ProductDetail: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex w-32 items-center justify-between border-b border-primary/10 pb-6">
+            <div className="flex w-full max-w-[180px] items-center justify-between border-b border-primary/10 pb-6">
               <span className="text-xs font-bold uppercase tracking-widest text-[#4f434b]">Qty</span>
               <div className="flex items-center gap-3">
                 <button
                   type="button"
                   disabled={quantity <= 1}
                   onClick={() => setQuantity((q) => q - 1)}
-                  className="text-primary hover:text-secondary disabled:opacity-35"
+                  className="flex h-8 w-8 items-center justify-center text-primary transition-colors hover:text-secondary disabled:opacity-35"
+                  aria-label="Decrease quantity"
                 >
-                  <span className="material-symbols-outlined select-none text-sm">remove</span>
+                  <Minus className="h-4 w-4" />
                 </button>
-                <span className="w-4 text-center font-sans text-sm font-bold">{quantity}</span>
+
+                <span className="min-w-[24px] text-center font-sans text-sm font-bold">
+                  {quantity}
+                </span>
+
                 <button
                   type="button"
                   onClick={() => setQuantity((q) => q + 1)}
-                  className="text-primary hover:text-secondary"
+                  className="flex h-8 w-8 items-center justify-center text-primary transition-colors hover:text-secondary"
+                  aria-label="Increase quantity"
                 >
-                  <span className="material-symbols-outlined select-none text-sm">add</span>
+                  <Plus className="h-4 w-4" />
                 </button>
               </div>
             </div>
@@ -282,19 +292,18 @@ export const ProductDetail: React.FC = () => {
                   onClick={() =>
                     setOpenOpenSection(openSection === "characteristics" ? null : "characteristics")
                   }
-                  className="flex w-full items-center justify-between border-b border-primary/10 py-2 pb-4 text-left hover:text-[#8f4c30]"
+                  className="flex w-full items-center justify-between gap-4 border-b border-primary/10 py-2 pb-4 text-left hover:text-[#8f4c30]"
                 >
                   <span className="font-serif text-lg text-primary">Gemstone Characteristics</span>
-                  <span
-                    className={`material-symbols-outlined select-none transition-transform duration-300 ${
+                  <ChevronDown
+                    className={`h-5 w-5 shrink-0 transition-transform duration-300 ${
                       openSection === "characteristics" ? "rotate-180" : ""
                     }`}
-                  >
-                    expand_more
-                  </span>
+                  />
                 </button>
+
                 {openSection === "characteristics" && (
-                  <div className="space-y-2 pb-6 pt-4 text-xs uppercase tracking-wide text-on-surface-variant leading-relaxed">
+                  <div className="space-y-2 pb-6 pt-4 text-xs uppercase leading-relaxed tracking-wide text-on-surface-variant">
                     <p>
                       <strong className="text-primary">Stone Type:</strong> {product.stoneType}
                     </p>
@@ -316,20 +325,17 @@ export const ProductDetail: React.FC = () => {
 
               <div>
                 <button
-                  onClick={() =>
-                    setOpenOpenSection(openSection === "sourcing" ? null : "sourcing")
-                  }
-                  className="flex w-full items-center justify-between border-b border-primary/10 py-2 pb-4 text-left hover:text-[#8f4c30]"
+                  onClick={() => setOpenOpenSection(openSection === "sourcing" ? null : "sourcing")}
+                  className="flex w-full items-center justify-between gap-4 border-b border-primary/10 py-2 pb-4 text-left hover:text-[#8f4c30]"
                 >
                   <span className="font-serif text-lg text-primary">The Art of Ethical Sourcing</span>
-                  <span
-                    className={`material-symbols-outlined select-none transition-transform duration-300 ${
+                  <ChevronDown
+                    className={`h-5 w-5 shrink-0 transition-transform duration-300 ${
                       openSection === "sourcing" ? "rotate-180" : ""
                     }`}
-                  >
-                    expand_more
-                  </span>
+                  />
                 </button>
+
                 {openSection === "sourcing" && (
                   <div className="space-y-2 pb-6 pt-4 text-xs font-light leading-relaxed text-on-surface-variant">
                     <p>
@@ -341,20 +347,17 @@ export const ProductDetail: React.FC = () => {
 
               <div>
                 <button
-                  onClick={() =>
-                    setOpenOpenSection(openSection === "shipping" ? null : "shipping")
-                  }
-                  className="flex w-full items-center justify-between border-b border-primary/10 py-2 pb-4 text-left hover:text-[#8f4c30]"
+                  onClick={() => setOpenOpenSection(openSection === "shipping" ? null : "shipping")}
+                  className="flex w-full items-center justify-between gap-4 border-b border-primary/10 py-2 pb-4 text-left hover:text-[#8f4c30]"
                 >
                   <span className="font-serif text-lg text-primary">Shipping & Heritage Packaging</span>
-                  <span
-                    className={`material-symbols-outlined select-none transition-transform duration-300 ${
+                  <ChevronDown
+                    className={`h-5 w-5 shrink-0 transition-transform duration-300 ${
                       openSection === "shipping" ? "rotate-180" : ""
                     }`}
-                  >
-                    expand_more
-                  </span>
+                  />
                 </button>
+
                 {openSection === "shipping" && (
                   <div className="space-y-2 pb-6 pt-4 text-xs font-light leading-relaxed text-on-surface-variant">
                     <p>
@@ -368,7 +371,7 @@ export const ProductDetail: React.FC = () => {
         </section>
 
         <section className="mt-32">
-          <div className="mb-12 flex items-end justify-between">
+          <div className="mb-12 flex items-end justify-between gap-6">
             <div className="space-y-2">
               <h2 className="font-headline text-3xl italic text-primary md:text-4xl">
                 You Might Also Love
@@ -377,6 +380,7 @@ export const ProductDetail: React.FC = () => {
                 Curated complements for your collection
               </p>
             </div>
+
             <Link
               to="/shop"
               className="border-b border-secondary pb-1 font-sans text-xs font-bold uppercase tracking-widest text-secondary transition-colors hover:text-primary"
@@ -387,21 +391,23 @@ export const ProductDetail: React.FC = () => {
 
           <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
             {complements.map((c) => (
-              <div key={c.id} className="flex h-full flex-col justify-between space-y-4 group">
+              <div key={c.id} className="group flex h-full flex-col justify-between space-y-4">
                 <div className="relative aspect-[3/4] overflow-hidden rounded-xl border border-primary/5 bg-surface-container">
                   <img
                     alt={c.name}
                     className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
                     src={c.images[0]}
                   />
+
                   <button
                     onClick={() => navigate(`/shop/${c.id}`)}
-                    className="absolute bottom-4 right-4 flex cursor-pointer items-center justify-center rounded-full bg-white/80 p-2 text-primary opacity-0 shadow-lg backdrop-blur-sm transition-opacity hover:text-secondary group-hover:opacity-100"
+                    className="absolute bottom-4 right-4 flex cursor-pointer items-center justify-center rounded-full bg-white/80 p-2 text-primary opacity-0 shadow-lg backdrop-blur-sm transition-all hover:text-secondary group-hover:opacity-100"
                     aria-label="View complement"
                   >
-                    <span className="material-symbols-outlined select-none text-sm">visibility</span>
+                    <ArrowUpRight className="h-4 w-4" />
                   </button>
                 </div>
+
                 <div className="space-y-1">
                   <h3 className="font-serif text-lg text-primary">{c.name}</h3>
                   <p className="font-sans text-sm text-on-surface-variant">{formatPrice(c.price)}</p>
@@ -414,3 +420,5 @@ export const ProductDetail: React.FC = () => {
     </div>
   );
 };
+
+export default ProductDetail;

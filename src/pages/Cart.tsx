@@ -5,6 +5,7 @@
 
 import React, { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { ShoppingBag, Minus, Plus, ArrowRight, ShieldCheck, Truck, Leaf } from "lucide-react";
 import { useCartStore } from "../store/cartStore";
 
 function formatPrice(amount: number): string {
@@ -21,16 +22,31 @@ export const Cart: React.FC = () => {
   const items = useCartStore((state) => state.items);
   const updateQuantity = useCartStore((state) => state.updateQuantity);
   const removeItem = useCartStore((state) => state.removeItem);
-  const subtotal = useCartStore((state) => state.subtotal());
-  const shipping = useCartStore((state) => state.shipping());
-  const total = useCartStore((state) => state.total());
 
   const [promoCode, setPromoCode] = useState("");
   const [promoApplied, setPromoApplied] = useState(false);
   const [promoMsg, setPromoMsg] = useState("");
 
+  const itemCount = useMemo(
+    () => items.reduce((sum, item) => sum + item.quantity, 0),
+    [items]
+  );
+
+  const subtotal = useMemo(
+    () => items.reduce((sum, item) => sum + item.price * item.quantity, 0),
+    [items]
+  );
+
+  const shipping = useMemo(() => {
+    if (subtotal === 0) return 0;
+    return subtotal >= 4000 ? 0 : 299;
+  }, [subtotal]);
+
+  const total = useMemo(() => subtotal + shipping, [subtotal, shipping]);
+
   const handleApplyPromo = (e: React.FormEvent) => {
     e.preventDefault();
+
     if (promoCode.trim().toUpperCase() === "HERITAGE") {
       setPromoApplied(true);
       setPromoMsg(
@@ -46,11 +62,6 @@ export const Cart: React.FC = () => {
     navigate("/checkout");
   };
 
-  const itemCount = useMemo(
-    () => items.reduce((sum, item) => sum + item.quantity, 0),
-    [items]
-  );
-
   return (
     <div className="min-h-screen bg-surface text-on-surface antialiased">
       <main className="mx-auto max-w-[1440px] px-6 py-16 md:px-12">
@@ -62,11 +73,11 @@ export const Cart: React.FC = () => {
         </header>
 
         {itemCount === 0 ? (
-          <div className="mx-auto max-w-xl space-y-6 border border-[#31032c]/10 bg-[#f0ede9]/40 p-12 text-center rounded-none py-20">
-            <span className="material-symbols-outlined select-none text-5xl text-[#8f4c30]">
-              shopping_bag
-            </span>
-            <h2 className="font-serif text-2xl italic text-[#31032c]">Your bag is empty</h2>
+          <div className="mx-auto max-w-xl space-y-6 rounded-none border border-[#31032c]/10 bg-[#f0ede9]/40 p-12 py-20 text-center">
+            <ShoppingBag className="mx-auto h-12 w-12 text-[#8f4c30]" />
+            <h2 className="font-serif text-2xl italic text-[#31032c]">
+              Your bag is empty
+            </h2>
             <p className="mx-auto max-w-sm text-sm font-light leading-relaxed text-[#4f434b]">
               Explore our refined collections of Kashmir Sapphires, Colombian Emeralds and Certified Diamonds to find your legacy.
             </p>
@@ -118,24 +129,22 @@ export const Cart: React.FC = () => {
                             type="button"
                             onClick={() => updateQuantity(item.id, item.quantity - 1)}
                             className="text-[#31032c] hover:text-[#8f4c30]"
-                            aria-label="Decrease quantity"
+                            aria-label={`Decrease quantity of ${item.name}`}
                           >
-                            <span className="material-symbols-outlined select-none text-sm">
-                              remove
-                            </span>
+                            <Minus className="h-4 w-4" />
                           </button>
+
                           <span className="w-4 text-center font-body font-semibold text-[#31032c]">
                             {item.quantity}
                           </span>
+
                           <button
                             type="button"
                             onClick={() => updateQuantity(item.id, item.quantity + 1)}
                             className="text-[#31032c] hover:text-[#8f4c30]"
-                            aria-label="Increase quantity"
+                            aria-label={`Increase quantity of ${item.name}`}
                           >
-                            <span className="material-symbols-outlined select-none text-sm">
-                              add
-                            </span>
+                            <Plus className="h-4 w-4" />
                           </button>
                         </div>
                       </div>
@@ -180,7 +189,7 @@ export const Cart: React.FC = () => {
                     </span>
                   </div>
 
-                  <div className="pt-8 border-t border-[#31032c]/15">
+                  <div className="border-t border-[#31032c]/15 pt-8">
                     <div className="flex items-end justify-between">
                       <span className="text-lg font-headline font-light text-[#31032c]">
                         Total Est.
@@ -192,13 +201,12 @@ export const Cart: React.FC = () => {
                   </div>
 
                   <button
+                    type="button"
                     onClick={handleCheckoutRedirect}
                     className="group mt-10 flex w-full cursor-pointer items-center justify-center gap-3 bg-[#31032c] px-8 py-5 text-xs font-bold uppercase tracking-widest text-[#fcf9f4] transition-all hover:bg-[#8f4c30]"
                   >
                     Proceed to Checkout
-                    <span className="material-symbols-outlined select-none text-sm transition-transform group-hover:translate-x-1">
-                      arrow_right_alt
-                    </span>
+                    <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                   </button>
 
                   <p className="mt-6 text-center text-[10px] font-bold uppercase tracking-widest text-[#4f434b]/60">
@@ -210,6 +218,7 @@ export const Cart: React.FC = () => {
                   <label className="mb-3 block text-[10px] font-bold uppercase tracking-widest text-[#4f434b]/70">
                     Atélier Invitation Code
                   </label>
+
                   <form onSubmit={handleApplyPromo} className="flex gap-4">
                     <input
                       className="flex-1 border-b border-[#31032c]/20 bg-transparent py-2 text-sm text-[#31032c] outline-none placeholder:text-[#4f434b]/40 focus:border-[#8f4c30]"
@@ -225,6 +234,7 @@ export const Cart: React.FC = () => {
                       Apply
                     </button>
                   </form>
+
                   {promoMsg && (
                     <p
                       className={`mt-3 text-[10px] italic ${
@@ -238,24 +248,9 @@ export const Cart: React.FC = () => {
               </div>
 
               <div className="flex items-center justify-center gap-6 opacity-35">
-                <span
-                  className="material-symbols-outlined select-none"
-                  title="Protected transaction"
-                >
-                  verified_user
-                </span>
-                <span
-                  className="material-symbols-outlined select-none"
-                  title="Worldwide insured delivery"
-                >
-                  local_shipping
-                </span>
-                <span
-                  className="material-symbols-outlined select-none"
-                  title="Recycled premium materials"
-                >
-                  potted_plant
-                </span>
+                <ShieldCheck className="h-5 w-5" title="Protected transaction" />
+                <Truck className="h-5 w-5" title="Worldwide insured delivery" />
+                <Leaf className="h-5 w-5" title="Recycled premium materials" />
               </div>
             </aside>
           </div>
@@ -264,3 +259,5 @@ export const Cart: React.FC = () => {
     </div>
   );
 };
+
+export default Cart;
