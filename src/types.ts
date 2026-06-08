@@ -8,9 +8,9 @@ export interface User {
   name: string;
   email: string;
   phone?: string | null;
-  role: 'USER' | 'ADMIN';
+  role: "USER" | "ADMIN";
   isVerified: boolean;
-  createdAt?: string;
+  createdAt?: string | Date;
 }
 
 export interface Address {
@@ -25,8 +25,8 @@ export interface Address {
   state: string;
   zip: string;
   country: string;
-  isDefault: boolean;
-  createdAt?: string;
+  isDefault?: boolean;
+  createdAt?: string | Date;
 }
 
 export interface Product {
@@ -45,8 +45,8 @@ export interface Product {
   stockQty: number;
   isActive?: boolean;
   isFeatured?: boolean;
-  createdAt?: string;
-  currency?: 'INR' | string;
+  createdAt?: string | Date;
+  currency?: "INR" | string;
   story?: string;
 }
 
@@ -83,11 +83,11 @@ export interface OrderUserSummary {
 }
 
 export type OrderStatus =
-  | 'PENDING'
-  | 'PROCESSING'
-  | 'SHIPPED'
-  | 'DELIVERED'
-  | 'CANCELLED'
+  | "PENDING"
+  | "PROCESSING"
+  | "SHIPPED"
+  | "DELIVERED"
+  | "CANCELLED"
   | string;
 
 export interface Order {
@@ -101,11 +101,11 @@ export interface Order {
   razorpaySignature?: string | null;
   paymentMethod?: string | null;
   isPaid: boolean;
-  paidAt?: string | null;
+  paidAt?: string | Date | null;
   trackingId?: string | null;
   trackingUrl?: string | null;
   shippingAddress: OrderShippingAddress;
-  createdAt: string;
+  createdAt: string | Date;
   user?: OrderUserSummary;
   items?: OrderItem[];
 }

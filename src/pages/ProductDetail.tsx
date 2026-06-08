@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import {
   ChevronRight,
@@ -18,7 +18,6 @@ import {
   Loader2,
 } from "lucide-react";
 import { Product } from "../types";
-import { SAMPLE_PRODUCTS } from "../lib/gemData";
 import { useCartStore } from "../store/cartStore";
 
 function formatPrice(amount: number): string {
@@ -29,58 +28,146 @@ function formatPrice(amount: number): string {
   }).format(amount);
 }
 
+const FALLBACK_IMAGE =
+  "https://lh3.googleusercontent.com/aida-public/AB6AXuAdxLOp7YYH--7HraJPEGWnnobgM9CU4CckIPS9tdpv8W80yA4P7Eio5HBlO2ZkBJuWLEGdKD0WMduCXWbo1E0oLfXkdLEOVf5LLHZD7iIjbi-vGO0GSrxZQuyJ64bVbvleOS6Hp0n1mh4i5EON9MTIhQ58w5HtvyDCJ1ohKDjSEky2nioWCUriAi1mZDtC8wGbTnUm8qnLaesJm4IBPzomEKBQKDLVUC5-S9JCfNTr9xzdA1JCyy2T2PSEXTgI2hPoio3qVVn3zGEC";
+
 export const ProductDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const addItem = useCartStore((state) => state.addItem);
 
   const [product, setProduct] = useState<Product | null>(null);
+  const [catalog, setCatalog] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [quantity, setQuantity] = useState(1);
   const [mainImage, setMainImage] = useState("");
   const [added, setAdded] = useState(false);
-
-  const [openSection, setOpenOpenSection] = useState<string | null>("characteristics");
+  const [errorMsg, setErrorMsg] = useState("");
+  const [openSection, setOpenSection] = useState<string | null>("characteristics");
   const [wishlisted, setWishlisted] = useState(false);
 
   useEffect(() => {
-    const fallbackLocal = () => {
-      const found = SAMPLE_PRODUCTS.find((p) => p.id === id);
-      if (found) {
-        setProduct(found);
-        setMainImage(found.images[0]);
-      } else if (SAMPLE_PRODUCTS.length > 0) {
-        setProduct(SAMPLE_PRODUCTS[0]);
-        setMainImage(SAMPLE_PRODUCTS[0].images[0]);
-      }
-    };
+    let isMounted = true;
 
-    const fetchDetail = async () => {
-      setLoading(true);
-      try {
-        const res = await fetch(`/api/products/${id}`);
-        if (res.ok) {
-          const data = await res.json();
-          const productData = data?.product ?? data;
-          if (productData && productData.id) {
-            setProduct(productData);
-            setMainImage(productData.images?.[0] || "");
-          } else {
-            fallbackLocal();
-          }
-        } else {
-          fallbackLocal();
+    const fetchProductData = async () => {
+      if (!id) {
+        if (isMounted) {
+          setProduct(null);
+          setCatalog([]);
+          setLoading(false);
+          setErrorMsg("Product ID is missing.");
         }
-      } catch {
-        fallbackLocal();
+        return;
+      }
+
+      setLoading(true);
+      setErrorMsg("");
+
+      try {
+        const listRes = await fetch("/api/products", {
+          headers: { Accept: "application/json" },
+        });
+
+        const listData = await listRes.json().catch(() => null);
+
+        if (!listRes.ok) {
+          throw new Error(listData?.error || "Failed to load products.");
+        }
+
+        const list = Array.isArray(listData) ? listData : listData?.products || [];
+        const safeList: Product[] = Array.isArray(list) ? list : [];
+        const found = safeList.find((p) => String(p.id) === String(id)) || null;
+
+        if (!isMounted) return;
+
+        setCatalog(safeList);
+        setProduct(found);
+
+        if (found) {
+          setMainImage(found.images?.[0] || FALLBACK_IMAGE);
+        } else {
+          setMainImage("");
+          setErrorMsg("Gemstone specimen not found in the live catalogue.");
+        }
+      } catch (error) {
+        if (!isMounted) return;
+
+        console.error("Failed to load product details.", error);
+        setCatalog([]);
+        setProduct(null);
+        setMainImage("");
+        setErrorMsg(
+          error instanceof Error ? error.message : "Failed to load product details."
+        );
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+          window.scrollTo(0, 0);
+        }
       }
     };
 
-    fetchDetail();
-    window.scrollTo(0, 0);
+    fetchProductData();
+
+    return () => {
+      isMounted = false;
+    };
   }, [id]);
+
+  useEffect(() => {
+    setQuantity(1);
+    setAdded(false);
+    setWishlisted(false);
+    setOpenSection("characteristics");
+  }, [product?.id]);
+
+  const maxQty = product?.stockQty && product.stockQty > 0 ? product.stockQty : undefined;
+  const displayImage = mainImage || product?.images?.[0] || FALLBACK_IMAGE;
+  const galleryImages =
+    product?.images && product.images.length > 0 ? product.images : [FALLBACK_IMAGE];
+
+  const handleAddToCart = () => {
+    if (!product) return;
+    if (product.stockQty !== undefined && product.stockQty <= 0) return;
+
+    for (let i = 0; i < quantity; i += 1) {
+      addItem({
+        id: product.id,
+        name: product.name,
+        price: product.price,
+        image: product.images?.[0] || FALLBACK_IMAGE,
+        stoneType: product.stoneType,
+        category: product.category,
+      });
+    }
+
+    setAdded(true);
+    window.setTimeout(() => {
+      setAdded(false);
+    }, 3000);
+  };
+
+  const complements = useMemo(() => {
+    if (!product) return [];
+
+    const sameCategory = catalog.filter(
+      (p) => p.id !== product.id && p.category === product.category
+    );
+    const sameStone = catalog.filter(
+      (p) =>
+        p.id !== product.id &&
+        p.stoneType === product.stoneType &&
+        !sameCategory.some((x) => x.id === p.id)
+    );
+    const fallback = catalog.filter(
+      (p) =>
+        p.id !== product.id &&
+        !sameCategory.some((x) => x.id === p.id) &&
+        !sameStone.some((x) => x.id === p.id)
+    );
+
+    return [...sameCategory, ...sameStone, ...fallback].slice(0, 4);
+  }, [catalog, product]);
 
   if (loading) {
     return (
@@ -93,34 +180,17 @@ export const ProductDetail: React.FC = () => {
 
   if (!product) {
     return (
-      <div className="py-20 text-center">
+      <div className="mx-auto max-w-[900px] px-6 py-20 text-center">
         <h2 className="font-serif text-3xl italic">Gemstone Specimen Not Found</h2>
+        <p className="mt-3 text-sm text-on-surface-variant">
+          {errorMsg || "This product is unavailable or no longer exists."}
+        </p>
         <Link to="/shop" className="mt-4 inline-block font-sans text-secondary hover:underline">
           Return to Atelier Catalogue
         </Link>
       </div>
     );
   }
-
-  const handleAddToCart = () => {
-    for (let i = 0; i < quantity; i += 1) {
-      addItem({
-        id: product.id,
-        name: product.name,
-        price: product.price,
-        image: product.images?.[0] || "",
-        stoneType: product.stoneType,
-        category: product.category,
-      });
-    }
-
-    setAdded(true);
-    setTimeout(() => {
-      setAdded(false);
-    }, 3000);
-  };
-
-  const complements = SAMPLE_PRODUCTS.filter((p) => p.id !== product.id).slice(0, 4);
 
   return (
     <div className="bg-surface text-on-surface antialiased">
@@ -134,9 +204,11 @@ export const ProductDetail: React.FC = () => {
             Collections
           </Link>
           <ChevronRight className="h-3.5 w-3.5 shrink-0" />
-          <span className="uppercase transition-colors hover:text-secondary">{product.stoneType}</span>
+          <span>{product.stoneType || "Gemstone"}</span>
           <ChevronRight className="h-3.5 w-3.5 shrink-0" />
-          <span className="max-w-xs truncate font-bold text-on-surface-variant">{product.name}</span>
+          <span className="max-w-xs truncate font-bold text-on-surface-variant">
+            {product.name}
+          </span>
         </nav>
 
         <section className="mb-24 grid grid-cols-1 items-start gap-16 lg:grid-cols-12">
@@ -145,7 +217,7 @@ export const ProductDetail: React.FC = () => {
               <img
                 alt={product.name}
                 className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
-                src={mainImage}
+                src={displayImage}
               />
 
               <div className="absolute right-6 top-6 flex flex-col gap-3">
@@ -153,6 +225,7 @@ export const ProductDetail: React.FC = () => {
                   onClick={() => setWishlisted(!wishlisted)}
                   className="cursor-pointer border border-[#31032c]/10 bg-white/80 p-3 text-[#31032c] shadow-md backdrop-blur-md transition-all hover:bg-white"
                   aria-label="Wishlist this item"
+                  type="button"
                 >
                   <Heart
                     className={`h-5 w-5 ${wishlisted ? "fill-current text-[#8f4c30]" : ""}`}
@@ -161,44 +234,44 @@ export const ProductDetail: React.FC = () => {
               </div>
             </div>
 
-            {product.images.length > 0 && (
-              <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-                {product.images.map((img, i) => (
-                  <div
-                    key={i}
-                    onClick={() => setMainImage(img)}
-                    className={`aspect-square cursor-pointer overflow-hidden border bg-white p-1 transition-all ${
-                      mainImage === img
-                        ? "border-[#8f4c30]"
-                        : "border-[#31032c]/10 hover:border-[#31032c]/40"
-                    }`}
-                  >
-                    <img
-                      alt={`Facets of ${product.name} item`}
-                      className="h-full w-full object-cover transition-opacity hover:opacity-80"
-                      src={img}
-                    />
-                  </div>
-                ))}
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+              {galleryImages.slice(0, 4).map((img, i) => (
+                <button
+                  key={`${img}-${i}`}
+                  type="button"
+                  onClick={() => setMainImage(img)}
+                  className={`aspect-square cursor-pointer overflow-hidden border bg-white p-1 text-left transition-all ${
+                    displayImage === img
+                      ? "border-[#8f4c30]"
+                      : "border-[#31032c]/10 hover:border-[#31032c]/40"
+                  }`}
+                  aria-label={`View image ${i + 1} of ${product.name}`}
+                >
+                  <img
+                    alt={`Facets of ${product.name} item ${i + 1}`}
+                    className="h-full w-full object-cover transition-opacity hover:opacity-80"
+                    src={img}
+                  />
+                </button>
+              ))}
 
-                {product.images.length < 4 && (
-                  <>
-                    <div className="flex aspect-square flex-col items-center justify-center overflow-hidden rounded-lg bg-surface-container-low p-2 text-center opacity-60">
-                      <Sparkles className="h-5 w-5 text-[#4A1942]" />
-                      <span className="mt-1 text-[8px] font-bold uppercase tracking-wider">
-                        Refraction Spec
-                      </span>
-                    </div>
-                    <div className="flex aspect-square flex-col items-center justify-center overflow-hidden rounded-lg bg-surface-container-low p-2 text-center opacity-60">
-                      <BadgeCheck className="h-5 w-5 text-[#4A1942]" />
-                      <span className="mt-1 text-[8px] font-bold uppercase tracking-wider">
-                        GIA Certified
-                      </span>
-                    </div>
-                  </>
-                )}
-              </div>
-            )}
+              {galleryImages.length < 4 && (
+                <>
+                  <div className="flex aspect-square flex-col items-center justify-center overflow-hidden rounded-lg bg-surface-container-low p-2 text-center opacity-60">
+                    <Sparkles className="h-5 w-5 text-[#4A1942]" />
+                    <span className="mt-1 text-[8px] font-bold uppercase tracking-wider">
+                      Refraction Spec
+                    </span>
+                  </div>
+                  <div className="flex aspect-square flex-col items-center justify-center overflow-hidden rounded-lg bg-surface-container-low p-2 text-center opacity-60">
+                    <BadgeCheck className="h-5 w-5 text-[#4A1942]" />
+                    <span className="mt-1 text-[8px] font-bold uppercase tracking-wider">
+                      Certified
+                    </span>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
 
           <div className="space-y-10 lg:col-span-5">
@@ -218,9 +291,16 @@ export const ProductDetail: React.FC = () => {
                 <span className="text-3xl font-semibold text-primary-container">
                   {formatPrice(product.price)}
                 </span>
+
                 {product.isFeatured && (
                   <span className="rounded bg-secondary-container/30 px-3 py-1 text-[10px] font-bold tracking-widest text-secondary">
                     LIMITED EDITION
+                  </span>
+                )}
+
+                {product.stockQty !== undefined && product.stockQty <= 0 && (
+                  <span className="rounded bg-red-100 px-3 py-1 text-[10px] font-bold tracking-widest text-red-700">
+                    OUT OF STOCK
                   </span>
                 )}
               </div>
@@ -249,7 +329,10 @@ export const ProductDetail: React.FC = () => {
             </div>
 
             <div className="flex w-full max-w-[180px] items-center justify-between border-b border-primary/10 pb-6">
-              <span className="text-xs font-bold uppercase tracking-widest text-[#4f434b]">Qty</span>
+              <span className="text-xs font-bold uppercase tracking-widest text-[#4f434b]">
+                Qty
+              </span>
+
               <div className="flex items-center gap-3">
                 <button
                   type="button"
@@ -268,8 +351,9 @@ export const ProductDetail: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setQuantity((q) => q + 1)}
-                  className="flex h-8 w-8 items-center justify-center text-primary transition-colors hover:text-secondary"
+                  className="flex h-8 w-8 items-center justify-center text-primary transition-colors hover:text-secondary disabled:opacity-35"
                   aria-label="Increase quantity"
+                  disabled={maxQty !== undefined && quantity >= maxQty}
                 >
                   <Plus className="h-4 w-4" />
                 </button>
@@ -280,21 +364,29 @@ export const ProductDetail: React.FC = () => {
               <button
                 type="button"
                 onClick={handleAddToCart}
-                className="w-full cursor-pointer bg-[#31032c] py-5 font-sans font-bold uppercase tracking-[0.2em] text-white shadow-md transition-all hover:bg-[#8f4c30] active:scale-[0.98]"
+                disabled={product.stockQty !== undefined && product.stockQty <= 0}
+                className="w-full cursor-pointer bg-[#31032c] py-5 font-sans font-bold uppercase tracking-[0.2em] text-white shadow-md transition-all hover:bg-[#8f4c30] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-[#31032c]"
               >
-                {added ? "Added To Selection Bag" : "Add to Cart"}
+                {product.stockQty !== undefined && product.stockQty <= 0
+                  ? "Out of Stock"
+                  : added
+                  ? "Added To Selection Bag"
+                  : "Add to Cart"}
               </button>
             </div>
 
             <div className="space-y-4 pt-10 font-sans">
               <div>
                 <button
+                  type="button"
                   onClick={() =>
-                    setOpenOpenSection(openSection === "characteristics" ? null : "characteristics")
+                    setOpenSection(openSection === "characteristics" ? null : "characteristics")
                   }
                   className="flex w-full items-center justify-between gap-4 border-b border-primary/10 py-2 pb-4 text-left hover:text-[#8f4c30]"
                 >
-                  <span className="font-serif text-lg text-primary">Gemstone Characteristics</span>
+                  <span className="font-serif text-lg text-primary">
+                    Gemstone Characteristics
+                  </span>
                   <ChevronDown
                     className={`h-5 w-5 shrink-0 transition-transform duration-300 ${
                       openSection === "characteristics" ? "rotate-180" : ""
@@ -305,19 +397,29 @@ export const ProductDetail: React.FC = () => {
                 {openSection === "characteristics" && (
                   <div className="space-y-2 pb-6 pt-4 text-xs uppercase leading-relaxed tracking-wide text-on-surface-variant">
                     <p>
-                      <strong className="text-primary">Stone Type:</strong> {product.stoneType}
+                      <strong className="text-primary">Stone Type:</strong>{" "}
+                      {product.stoneType || "N/A"}
                     </p>
                     <p>
-                      <strong className="text-primary">Color:</strong> {product.stoneColor}
+                      <strong className="text-primary">Color:</strong>{" "}
+                      {product.stoneColor || "N/A"}
                     </p>
                     <p>
-                      <strong className="text-primary">Carat Weight:</strong> {product.caratWeight} ct
+                      <strong className="text-primary">Carat Weight:</strong>{" "}
+                      {product.caratWeight ?? "N/A"}
+                      {product.caratWeight ? " ct" : ""}
                     </p>
                     <p>
-                      <strong className="text-primary">Origin:</strong> {product.origin}
+                      <strong className="text-primary">Origin:</strong>{" "}
+                      {product.origin || "N/A"}
                     </p>
                     <p>
-                      <strong className="text-primary">Certification:</strong> {product.certification}
+                      <strong className="text-primary">Certification:</strong>{" "}
+                      {product.certification || "N/A"}
+                    </p>
+                    <p>
+                      <strong className="text-primary">Reference Code:</strong>{" "}
+                      {product.refCode || "N/A"}
                     </p>
                   </div>
                 )}
@@ -325,10 +427,13 @@ export const ProductDetail: React.FC = () => {
 
               <div>
                 <button
-                  onClick={() => setOpenOpenSection(openSection === "sourcing" ? null : "sourcing")}
+                  type="button"
+                  onClick={() => setOpenSection(openSection === "sourcing" ? null : "sourcing")}
                   className="flex w-full items-center justify-between gap-4 border-b border-primary/10 py-2 pb-4 text-left hover:text-[#8f4c30]"
                 >
-                  <span className="font-serif text-lg text-primary">The Art of Ethical Sourcing</span>
+                  <span className="font-serif text-lg text-primary">
+                    The Art of Ethical Sourcing
+                  </span>
                   <ChevronDown
                     className={`h-5 w-5 shrink-0 transition-transform duration-300 ${
                       openSection === "sourcing" ? "rotate-180" : ""
@@ -339,7 +444,9 @@ export const ProductDetail: React.FC = () => {
                 {openSection === "sourcing" && (
                   <div className="space-y-2 pb-6 pt-4 text-xs font-light leading-relaxed text-on-surface-variant">
                     <p>
-                      Each mineral specimen is ethically tracked through transparent mine-to-market protocols. Transparent sourcing coordinates allow local artisanal empowerment across India and certified global mining communities.
+                      Each mineral specimen is ethically tracked through transparent
+                      mine-to-market protocols. Transparent sourcing coordinates allow local
+                      artisanal empowerment across India and certified global mining communities.
                     </p>
                   </div>
                 )}
@@ -347,10 +454,13 @@ export const ProductDetail: React.FC = () => {
 
               <div>
                 <button
-                  onClick={() => setOpenOpenSection(openSection === "shipping" ? null : "shipping")}
+                  type="button"
+                  onClick={() => setOpenSection(openSection === "shipping" ? null : "shipping")}
                   className="flex w-full items-center justify-between gap-4 border-b border-primary/10 py-2 pb-4 text-left hover:text-[#8f4c30]"
                 >
-                  <span className="font-serif text-lg text-primary">Shipping & Heritage Packaging</span>
+                  <span className="font-serif text-lg text-primary">
+                    Shipping & Heritage Packaging
+                  </span>
                   <ChevronDown
                     className={`h-5 w-5 shrink-0 transition-transform duration-300 ${
                       openSection === "shipping" ? "rotate-180" : ""
@@ -361,7 +471,8 @@ export const ProductDetail: React.FC = () => {
                 {openSection === "shipping" && (
                   <div className="space-y-2 pb-6 pt-4 text-xs font-light leading-relaxed text-on-surface-variant">
                     <p>
-                      Delivered via secure insured shipping. Orders above ₹4,000 receive free shipping; otherwise a ₹299 shipping charge applies at checkout.
+                      Delivered via secure insured shipping. Orders above ₹4,000 receive free
+                      shipping; otherwise a ₹299 shipping charge applies at checkout.
                     </p>
                   </div>
                 )}
@@ -370,52 +481,56 @@ export const ProductDetail: React.FC = () => {
           </div>
         </section>
 
-        <section className="mt-32">
-          <div className="mb-12 flex items-end justify-between gap-6">
-            <div className="space-y-2">
-              <h2 className="font-headline text-3xl italic text-primary md:text-4xl">
-                You Might Also Love
-              </h2>
-              <p className="font-sans text-xs uppercase tracking-widest text-on-surface-variant/60">
-                Curated complements for your collection
-              </p>
+        {complements.length > 0 && (
+          <section className="mt-32">
+            <div className="mb-12 flex items-end justify-between gap-6">
+              <div className="space-y-2">
+                <h2 className="font-headline text-3xl italic text-primary md:text-4xl">
+                  You Might Also Love
+                </h2>
+                <p className="font-sans text-xs uppercase tracking-widest text-on-surface-variant/60">
+                  Curated complements from the live catalogue
+                </p>
+              </div>
+
+              <Link
+                to="/shop"
+                className="border-b border-secondary pb-1 font-sans text-xs font-bold uppercase tracking-widest text-secondary transition-colors hover:text-primary"
+              >
+                View All Curations
+              </Link>
             </div>
 
-            <Link
-              to="/shop"
-              className="border-b border-secondary pb-1 font-sans text-xs font-bold uppercase tracking-widest text-secondary transition-colors hover:text-primary"
-            >
-              View All Curations
-            </Link>
-          </div>
+            <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
+              {complements.map((c) => (
+                <Link
+                  key={c.id}
+                  to={`/shop/${c.id}`}
+                  className="group flex h-full flex-col justify-between space-y-4"
+                >
+                  <div className="relative aspect-[3/4] overflow-hidden rounded-xl border border-primary/5 bg-surface-container">
+                    <img
+                      alt={c.name}
+                      className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
+                      src={c.images?.[0] || FALLBACK_IMAGE}
+                    />
 
-          <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
-            {complements.map((c) => (
-              <div key={c.id} className="group flex h-full flex-col justify-between space-y-4">
-                <div className="relative aspect-[3/4] overflow-hidden rounded-xl border border-primary/5 bg-surface-container">
-                  <img
-                    alt={c.name}
-                    className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
-                    src={c.images[0]}
-                  />
+                    <div className="absolute bottom-4 right-4 flex items-center justify-center rounded-full bg-white/80 p-2 text-primary opacity-0 shadow-lg backdrop-blur-sm transition-all group-hover:opacity-100 group-hover:text-secondary">
+                      <ArrowUpRight className="h-4 w-4" />
+                    </div>
+                  </div>
 
-                  <button
-                    onClick={() => navigate(`/shop/${c.id}`)}
-                    className="absolute bottom-4 right-4 flex cursor-pointer items-center justify-center rounded-full bg-white/80 p-2 text-primary opacity-0 shadow-lg backdrop-blur-sm transition-all hover:text-secondary group-hover:opacity-100"
-                    aria-label="View complement"
-                  >
-                    <ArrowUpRight className="h-4 w-4" />
-                  </button>
-                </div>
-
-                <div className="space-y-1">
-                  <h3 className="font-serif text-lg text-primary">{c.name}</h3>
-                  <p className="font-sans text-sm text-on-surface-variant">{formatPrice(c.price)}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
+                  <div className="space-y-1">
+                    <h3 className="font-serif text-lg text-primary">{c.name}</h3>
+                    <p className="font-sans text-sm text-on-surface-variant">
+                      {formatPrice(c.price)}
+                    </p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
       </main>
     </div>
   );

@@ -3,14 +3,21 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from "react";
-import { Search, Plus, Pencil, Trash2, X } from "lucide-react";
+import React, { useEffect, useMemo, useState } from "react";
+import { Search, Plus, Pencil, Trash2, X, Loader2 } from "lucide-react";
 import { AdminSidebar } from "../components/AdminSidebar";
 import { Product } from "../types";
-import { SAMPLE_PRODUCTS } from "../lib/gemData";
+
+function formatPrice(amount: number): string {
+  return new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    maximumFractionDigits: 0,
+  }).format(amount);
+}
 
 export const AdminProducts: React.FC = () => {
-  const [products, setProducts] = useState<Product[]>(SAMPLE_PRODUCTS);
+  const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
 
@@ -21,30 +28,44 @@ export const AdminProducts: React.FC = () => {
   const [name, setName] = useState("");
   const [refCode, setRefCode] = useState("");
   const [category, setCategory] = useState("Collections");
-  const [stoneType, setStoneType] = useState("EMERALD");
+  const [stoneType, setStoneType] = useState("Emerald");
+  const [stoneColor, setStoneColor] = useState("");
+  const [caratWeight, setCaratWeight] = useState<number | "">("");
+  const [origin, setOrigin] = useState("");
+  const [certification, setCertification] = useState("");
+  const [stockQty, setStockQty] = useState<number>(5);
   const [price, setPrice] = useState<number>(1000);
   const [description, setDescription] = useState("");
   const [story, setStory] = useState("");
-  const [imgUrl, setImgUrl] = useState("");
+  const [imageUrl, setImageUrl] = useState("");
   const [isActive, setIsActive] = useState(true);
   const [isFeatured, setIsFeatured] = useState(false);
 
+  const [saving, setSaving] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
+
   const fetchInventory = async () => {
     setLoading(true);
+    setErrorMsg("");
+
     try {
       const res = await fetch("/api/products", {
+        credentials: "include",
         headers: { Accept: "application/json" },
       });
 
-      if (res.ok) {
-        const data = await res.json();
-        const list = Array.isArray(data) ? data : data.products || [];
-        if (list.length > 0) {
-          setProducts(list);
-        }
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok) {
+        throw new Error(data?.error || "Failed to load inventory.");
       }
+
+      const list = Array.isArray(data) ? data : data?.products || [];
+      setProducts(Array.isArray(list) ? list : []);
     } catch (err) {
       console.error("Failed to load inventory from API.", err);
+      setProducts([]);
+      setErrorMsg(err instanceof Error ? err.message : "Failed to load inventory.");
     } finally {
       setLoading(false);
     }
@@ -54,112 +75,134 @@ export const AdminProducts: React.FC = () => {
     fetchInventory();
   }, []);
 
+  const buildNextRefCode = () =>
+    `RG-${new Date().getFullYear()}-${String(products.length + 1).padStart(3, "0")}`;
+
+  const resetForm = () => {
+    setName("");
+    setRefCode(buildNextRefCode());
+    setCategory("Collections");
+    setStoneType("Emerald");
+    setStoneColor("");
+    setCaratWeight("");
+    setOrigin("");
+    setCertification("");
+    setStockQty(5);
+    setPrice(1000);
+    setDescription("");
+    setStory("");
+    setImageUrl("");
+    setIsActive(true);
+    setIsFeatured(false);
+    setSelectedProd(null);
+    setErrorMsg("");
+  };
+
   const handleOpenDrawer = (mode: "create" | "edit", prod: Product | null = null) => {
     setEditMode(mode);
-    setSelectedProd(prod);
     setDrawerOpen(true);
+    setErrorMsg("");
 
     if (mode === "edit" && prod) {
-      setName(prod.name);
+      setSelectedProd(prod);
+      setName(prod.name || "");
       setRefCode(prod.refCode || "");
-      setCategory(prod.category);
-      setStoneType(prod.stoneType);
-      setPrice(prod.price);
-      setDescription(prod.description);
+      setCategory(prod.category || "Collections");
+      setStoneType(prod.stoneType || "Emerald");
+      setStoneColor(prod.stoneColor || "");
+      setCaratWeight(prod.caratWeight ?? "");
+      setOrigin(prod.origin || "");
+      setCertification(prod.certification || "");
+      setStockQty(prod.stockQty ?? 5);
+      setPrice(prod.price || 1000);
+      setDescription(prod.description || "");
       setStory(prod.story || "");
-      setImgUrl(prod.images[0] || "");
-      setIsActive(prod.isActive || false);
-      setIsFeatured(prod.isFeatured || false);
+      setImageUrl(prod.images?.[0] || "");
+      setIsActive(prod.isActive ?? true);
+      setIsFeatured(prod.isFeatured ?? false);
     } else {
-      setName("");
-      setRefCode(`RG-2024-0${products.length + 1}`);
-      setCategory("Collections");
-      setStoneType("EMERALD");
-      setPrice(1000);
-      setDescription("");
-      setStory("");
-      setImgUrl(
-        "https://lh3.googleusercontent.com/aida-public/AB6AXuABpV63oOEC6BG81Ofbf81e4xEZt_8jeHnQdCYNpJXvBBjWclO7xI5fx2_2yxv4D2dcpQzBAfhqpbMTWYrzMlQucJ12BiCSbQcHCdEk1ftjWTtFW9218imzoBCj4azNQoN9XbDsgLAyxzpeMem0MPCXdZyX8RgIT8wYl9SJ0ZeUwR4B8coMPG7bfSBji1L_FVwRv09aVj4gj3iBi2bELO5pNU-JRdDnk7BAhLSopmibPKU4sPImjcyFzetJUhpo0S02osuwa6HvHFJO"
-      );
-      setIsActive(true);
-      setIsFeatured(false);
+      resetForm();
     }
+  };
+
+  const handleCloseDrawer = () => {
+    setDrawerOpen(false);
+    setSaving(false);
+    resetForm();
   };
 
   const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !price) return;
+    setErrorMsg("");
 
-    const payload = {
-      name,
-      refCode,
-      category,
-      stoneType,
-      stoneColor: "Deep hue",
-      price: Number(price),
-      description,
-      story,
-      images: [imgUrl],
-      stockQty: 5,
-      isActive,
-      isFeatured,
-    };
+    if (!name.trim()) {
+      setErrorMsg("Product name is required.");
+      return;
+    }
+
+    if (!imageUrl.trim()) {
+      setErrorMsg("Primary image URL is required.");
+      return;
+    }
+
+    if (!price || Number(price) <= 0) {
+      setErrorMsg("Price must be greater than 0.");
+      return;
+    }
+
+    if (Number(stockQty) < 0) {
+      setErrorMsg("Stock quantity cannot be negative.");
+      return;
+    }
+
+    setSaving(true);
 
     try {
-      if (editMode === "create") {
-        const res = await fetch("/api/products", {
-          method: "POST",
-          credentials: "include",
-          headers: {
-            "Content-Type": "application/json",
-            Accept: "application/json",
-          },
-          body: JSON.stringify(payload),
-        });
+      const payload = {
+        name: name.trim(),
+        refCode: refCode.trim() || undefined,
+        category: category.trim(),
+        stoneType: stoneType.trim(),
+        stoneColor: stoneColor.trim() || "Deep hue",
+        caratWeight: caratWeight === "" ? undefined : Number(caratWeight),
+        origin: origin.trim() || undefined,
+        certification: certification.trim() || undefined,
+        price: Number(price),
+        description: description.trim(),
+        story: story.trim() || undefined,
+        images: [imageUrl.trim()],
+        stockQty: Number(stockQty),
+        isActive,
+        isFeatured,
+      };
 
-        if (res.ok) {
-          await fetchInventory();
-        } else {
-          const mockNew: Product = {
-            id: `gem-mock-${Date.now()}`,
-            ...payload,
-          };
-          setProducts((prev) => [mockNew, ...prev]);
-        }
-      } else if (editMode === "edit" && selectedProd) {
-        const res = await fetch(`/api/products/${selectedProd.id}`, {
-          method: "PATCH",
-          credentials: "include",
-          headers: {
-            "Content-Type": "application/json",
-            Accept: "application/json",
-          },
-          body: JSON.stringify(payload),
-        });
+      const url =
+        editMode === "create" ? "/api/products" : `/api/products/${selectedProd?.id}`;
+      const method = editMode === "create" ? "POST" : "PATCH";
 
-        if (res.ok) {
-          await fetchInventory();
-        } else {
-          setProducts((prev) =>
-            prev.map((p) => (p.id === selectedProd.id ? { ...p, ...payload } : p))
-          );
-        }
+      const res = await fetch(url, {
+        method,
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok) {
+        throw new Error(data?.error || "Failed to save product.");
       }
+
+      await fetchInventory();
+      handleCloseDrawer();
     } catch (err) {
-      console.warn("CRUD operations warning, saving locally", err);
-      if (editMode === "create") {
-        const mockNew: Product = {
-          id: `gem-mock-${Date.now()}`,
-          ...payload,
-        };
-        setProducts((prev) => [mockNew, ...prev]);
-      } else if (selectedProd) {
-        setProducts((prev) =>
-          prev.map((p) => (p.id === selectedProd.id ? { ...p, ...payload } : p))
-        );
-      }
+      console.error("Failed to save product.", err);
+      setErrorMsg(err instanceof Error ? err.message : "Failed to save product.");
     } finally {
-      setDrawerOpen(false);
+      setSaving(false);
     }
   };
 
@@ -173,241 +216,281 @@ export const AdminProducts: React.FC = () => {
         headers: { Accept: "application/json" },
       });
 
-      if (res.ok) {
-        await fetchInventory();
-      } else {
-        setProducts((prev) => prev.filter((p) => p.id !== id));
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok) {
+        throw new Error(data?.error || "Failed to delete product.");
       }
-    } catch {
-      setProducts((prev) => prev.filter((p) => p.id !== id));
+
+      await fetchInventory();
+    } catch (err) {
+      console.error("Failed to delete product.", err);
+      setErrorMsg(err instanceof Error ? err.message : "Failed to delete product.");
     }
   };
 
-  const filteredList = products.filter(
-    (p) =>
-      p.name.toLowerCase().includes(search.toLowerCase()) ||
-      p.stoneType.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredList = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return products;
+
+    return products.filter(
+      (p) =>
+        p.name?.toLowerCase().includes(q) ||
+        p.stoneType?.toLowerCase().includes(q) ||
+        p.category?.toLowerCase().includes(q) ||
+        p.refCode?.toLowerCase().includes(q)
+    );
+  }, [products, search]);
 
   return (
-    <div className="bg-[#fcf9f4] text-on-surface flex min-h-screen">
+    <div className="flex min-h-screen bg-[#fcf9f4] text-on-surface">
       <AdminSidebar />
 
-      <main className="flex-1 ml-64 flex flex-col h-screen overflow-hidden">
-        <header className="sticky top-0 w-full z-20 flex items-center justify-between px-12 py-6 bg-[#fcf9f4]/85 backdrop-blur-xl border-b border-[#4A1942]/10 font-sans">
+      <main className="ml-64 flex h-screen flex-1 flex-col overflow-hidden">
+        <header className="sticky top-0 z-20 flex w-full items-center justify-between border-b border-[#4A1942]/10 bg-[#fcf9f4]/85 px-12 py-6 font-sans backdrop-blur-xl">
           <div>
-            <h1 className="text-3xl font-serif italic text-primary-container tracking-widest font-bold">
+            <h1 className="text-3xl font-serif font-bold italic tracking-widest text-primary-container">
               Inventory
             </h1>
-            <p className="text-on-surface-variant text-xs font-sans tracking-widest uppercase mt-1">
+            <p className="mt-1 text-xs uppercase tracking-widest text-on-surface-variant">
               Curating the RoshGems Collection
             </p>
           </div>
 
           <div className="flex items-center gap-6">
-            <div className="relative group">
+            <div className="group relative">
               <input
-                className="bg-transparent border-b border-primary/20 focus:border-primary transition-colors py-2 pl-2 pr-10 text-sm italic font-serif outline-none placeholder:text-on-surface-variant/50"
+                className="border-b border-primary/20 bg-transparent py-2 pl-2 pr-10 font-serif text-sm italic outline-none transition-colors placeholder:text-on-surface-variant/50 focus:border-primary"
                 placeholder="Search Gemstones..."
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
-              <Search className="absolute right-2 top-2 w-4 h-4 text-on-surface-variant" />
+              <Search className="absolute right-2 top-2 h-4 w-4 text-on-surface-variant" />
             </div>
 
             <button
               onClick={() => handleOpenDrawer("create")}
-              className="bg-primary-container text-white px-8 py-3 rounded-xl flex items-center gap-3 transition-transform active:scale-95 shadow-lg shadow-primary/10 cursor-pointer font-sans"
+              className="flex cursor-pointer items-center gap-3 rounded-xl bg-primary-container px-8 py-3 font-sans text-white shadow-lg shadow-primary/10 transition-transform active:scale-95"
               type="button"
             >
-              <Plus className="w-4 h-4" />
-              <span className="text-[12px] tracking-widest uppercase font-semibold">
+              <Plus className="h-4 w-4" />
+              <span className="text-[12px] font-semibold uppercase tracking-widest">
                 Add New Product
               </span>
             </button>
           </div>
         </header>
 
-        <div className="flex-grow overflow-auto px-12 py-10 no-scrollbar">
-          <div className="bg-white rounded-xl shadow-[0_10px_30px_rgba(74,25,66,0.03)] border border-outline-variant/10">
-            <table className="w-full text-left border-collapse font-sans">
+        <div className="no-scrollbar flex-grow overflow-auto px-12 py-10">
+          {errorMsg && (
+            <div className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              {errorMsg}
+            </div>
+          )}
+
+          <div className="rounded-xl border border-outline-variant/10 bg-white shadow-[0_10px_30px_rgba(74,25,66,0.03)]">
+            <table className="w-full border-collapse text-left font-sans">
               <thead>
                 <tr className="border-b border-[#f0ede9]">
-                  <th className="px-8 py-6 text-[11px] tracking-widest uppercase text-on-surface-variant font-bold">
+                  <th className="px-8 py-6 text-[11px] font-bold uppercase tracking-widest text-on-surface-variant">
                     Product
                   </th>
-                  <th className="px-8 py-6 text-[11px] tracking-widest uppercase text-on-surface-variant font-bold">
+                  <th className="px-8 py-6 text-[11px] font-bold uppercase tracking-widest text-on-surface-variant">
                     Category
                   </th>
-                  <th className="px-8 py-6 text-[11px] tracking-widest uppercase text-on-surface-variant font-bold">
+                  <th className="px-8 py-6 text-[11px] font-bold uppercase tracking-widest text-on-surface-variant">
                     Price
                   </th>
-                  <th className="px-8 py-6 text-[11px] tracking-widest uppercase text-on-surface-variant font-bold">
+                  <th className="px-8 py-6 text-[11px] font-bold uppercase tracking-widest text-on-surface-variant">
                     Stock
                   </th>
-                  <th className="px-8 py-6 text-[11px] tracking-widest uppercase text-on-surface-variant font-bold">
+                  <th className="px-8 py-6 text-[11px] font-bold uppercase tracking-widest text-on-surface-variant">
                     Status
                   </th>
-                  <th className="px-8 py-6 text-[11px] tracking-widest uppercase text-on-surface-variant font-bold text-right">
+                  <th className="px-8 py-6 text-right text-[11px] font-bold uppercase tracking-widest text-on-surface-variant">
                     Actions
                   </th>
                 </tr>
               </thead>
 
               <tbody className="divide-y divide-[#f0ede9]/50 text-xs">
-                {filteredList.map((p) => (
-                  <tr key={p.id} className="hover:bg-surface-container-low transition-colors group">
-                    <td className="px-8 py-5">
-                      <div className="flex items-center gap-4">
-                        <div className="w-16 h-16 rounded-lg overflow-hidden bg-surface-container flex-shrink-0 border border-outline-variant/20">
-                          <img
-                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                            alt={p.name}
-                            src={p.images[0]}
-                          />
-                        </div>
-                        <div>
-                          <div className="font-serif text-primary-container text-lg leading-tight font-bold">
-                            {p.name}
-                          </div>
-                          <div className="text-[10px] uppercase tracking-widest text-[#4f434b]/60 mt-1">
-                            Ref: {p.refCode || "RG-MOCK-Z"}
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-
-                    <td className="px-8 py-5">
-                      <span className="px-3 py-1 rounded-full bg-surface-container text-[10px] uppercase tracking-widest text-[#4f434b] font-bold">
-                        {p.category}
-                      </span>
-                    </td>
-
-                    <td className="px-8 py-5 font-serif text-primary-container font-bold">
-                      ${p.price.toLocaleString()}
-                    </td>
-
-                    <td className="px-8 py-5 text-on-surface-variant">{p.stockQty} Units</td>
-
-                    <td className="px-8 py-5">
-                      <div className="relative inline-flex items-center cursor-pointer font-sans select-none">
-                        <div
-                          className={`w-10 h-5 rounded-full transition-colors ${
-                            p.isActive ? "bg-secondary" : "bg-outline-variant/30"
-                          }`}
-                        >
-                          <div
-                            className={`w-3 h-3 bg-white rounded-full transition-transform mt-1 ml-1 ${
-                              p.isActive ? "translate-x-5" : "translate-x-0"
-                            }`}
-                          />
-                        </div>
-                        <span
-                          className={`ml-3 text-[10px] uppercase tracking-widest font-bold ${
-                            p.isActive ? "text-secondary" : "text-on-surface-variant/40"
-                          }`}
-                        >
-                          {p.isActive ? "Active" : "Draft"}
-                        </span>
-                      </div>
-                    </td>
-
-                    <td className="px-8 py-5 text-right">
-                      <div className="flex items-center justify-end gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button
-                          onClick={() => handleOpenDrawer("edit", p)}
-                          className="w-8 h-8 rounded-full bg-surface-container border border-primary/5 flex items-center justify-center hover:bg-primary-container hover:text-white transition-all cursor-pointer"
-                          aria-label="Edit product details"
-                          type="button"
-                        >
-                          <Pencil className="w-4 h-4" />
-                        </button>
-
-                        <button
-                          onClick={() => handleDeleteProduct(p.id)}
-                          className="w-8 h-8 rounded-full bg-surface-container border border-primary/5 flex items-center justify-center hover:bg-red-800 hover:text-white transition-all cursor-pointer"
-                          aria-label="Delete product"
-                          type="button"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
+                {loading ? (
+                  <tr>
+                    <td colSpan={6} className="px-8 py-10 text-center text-on-surface-variant">
+                      Loading inventory...
                     </td>
                   </tr>
-                ))}
+                ) : filteredList.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-8 py-10 text-center text-on-surface-variant">
+                      No products found.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredList.map((p) => (
+                    <tr
+                      key={p.id}
+                      className="group transition-colors hover:bg-surface-container-low"
+                    >
+                      <td className="px-8 py-5">
+                        <div className="flex items-center gap-4">
+                          <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-lg border border-outline-variant/20 bg-surface-container">
+                            <img
+                              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
+                              alt={p.name}
+                              src={p.images?.[0] || ""}
+                            />
+                          </div>
+                          <div>
+                            <div className="text-lg font-serif font-bold leading-tight text-primary-container">
+                              {p.name}
+                            </div>
+                            <div className="mt-1 text-[10px] uppercase tracking-widest text-[#4f434b]/60">
+                              Ref: {p.refCode || "N/A"}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+
+                      <td className="px-8 py-5">
+                        <span className="rounded-full bg-surface-container px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-[#4f434b]">
+                          {p.category}
+                        </span>
+                      </td>
+
+                      <td className="px-8 py-5 font-serif font-bold text-primary-container">
+                        {formatPrice(p.price)}
+                      </td>
+
+                      <td className="px-8 py-5 text-on-surface-variant">
+                        {p.stockQty} Units
+                      </td>
+
+                      <td className="px-8 py-5">
+                        <div className="relative inline-flex cursor-pointer select-none items-center font-sans">
+                          <div
+                            className={`h-5 w-10 rounded-full transition-colors ${
+                              p.isActive ? "bg-secondary" : "bg-outline-variant/30"
+                            }`}
+                          >
+                            <div
+                              className={`ml-1 mt-1 h-3 w-3 rounded-full bg-white transition-transform ${
+                                p.isActive ? "translate-x-5" : "translate-x-0"
+                              }`}
+                            />
+                          </div>
+                          <span
+                            className={`ml-3 text-[10px] font-bold uppercase tracking-widest ${
+                              p.isActive ? "text-secondary" : "text-on-surface-variant/40"
+                            }`}
+                          >
+                            {p.isActive ? "Active" : "Draft"}
+                          </span>
+                        </div>
+                      </td>
+
+                      <td className="px-8 py-5 text-right">
+                        <div className="flex items-center justify-end gap-3 opacity-0 transition-opacity group-hover:opacity-100">
+                          <button
+                            onClick={() => handleOpenDrawer("edit", p)}
+                            className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border border-primary/5 bg-surface-container transition-all hover:bg-primary-container hover:text-white"
+                            aria-label="Edit product details"
+                            type="button"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </button>
+
+                          <button
+                            onClick={() => handleDeleteProduct(p.id)}
+                            className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border border-primary/5 bg-surface-container transition-all hover:bg-red-800 hover:text-white"
+                            aria-label="Delete product"
+                            type="button"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
 
-          <footer className="mt-12 py-10 border-t border-primary/5 grid grid-cols-1 md:grid-cols-4 gap-12 font-sans text-xs">
+          <footer className="mt-12 grid grid-cols-1 gap-12 border-t border-primary/5 py-10 font-sans text-xs md:grid-cols-4">
             <div>
-              <div className="font-serif italic text-primary-container text-lg mb-4">
+              <div className="mb-4 text-lg font-serif italic text-primary-container">
                 RoshGems Digital Atélier
               </div>
-              <p className="text-[10px] tracking-widest uppercase text-on-surface-variant/70 leading-loose">
+              <p className="text-[10px] uppercase leading-loose tracking-widest text-on-surface-variant/70">
                 © 2026 Atélier Admin. All rights reserved.
               </p>
             </div>
-            <div className="col-span-3 flex justify-end gap-12 font-sans text-on-surface-variant font-bold tracking-widest uppercase pt-2">
-              <span className="hover:text-secondary cursor-pointer">Privacy Charter</span>
-              <span className="hover:text-secondary cursor-pointer">Shipping standards</span>
+            <div className="col-span-3 flex justify-end gap-12 pt-2 font-sans font-bold uppercase tracking-widest text-on-surface-variant">
+              <span className="cursor-pointer hover:text-secondary">Privacy Charter</span>
+              <span className="cursor-pointer hover:text-secondary">Shipping standards</span>
             </div>
           </footer>
         </div>
       </main>
 
       {drawerOpen && (
-        <div className="fixed inset-0 bg-[#31032c]/20 backdrop-blur-sm z-50 flex justify-end">
-          <aside className="w-[450px] bg-white shadow-[0_0_80px_rgba(74,25,66,0.15)] h-full border-l border-primary/5 flex flex-col p-10 overflow-y-auto">
-            <div className="flex items-center justify-between border-b pb-6 mb-8 font-sans">
+        <div className="fixed inset-0 z-50 flex justify-end bg-[#31032c]/20 backdrop-blur-sm">
+          <aside className="flex h-full w-[520px] flex-col overflow-y-auto border-l border-primary/5 bg-white p-10 shadow-[0_0_80px_rgba(74,25,66,0.15)]">
+            <div className="mb-8 flex items-center justify-between border-b pb-6 font-sans">
               <div>
-                <h2 className="font-serif text-2xl text-primary-container font-semibold">
+                <h2 className="text-2xl font-serif font-semibold text-primary-container">
                   {editMode === "create" ? "Curate New Piece" : "Edit Gem Specimen"}
                 </h2>
-                <p className="text-[10px] uppercase tracking-[0.2em] text-[#81737b] mt-1">
+                <p className="mt-1 text-[10px] uppercase tracking-[0.2em] text-[#81737b]">
                   Item Registration
                 </p>
               </div>
 
               <button
-                onClick={() => setDrawerOpen(false)}
-                className="w-10 h-10 rounded-full hover:bg-surface-container flex items-center justify-center transition-colors cursor-pointer"
+                onClick={handleCloseDrawer}
+                className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full transition-colors hover:bg-surface-container"
                 type="button"
                 aria-label="Close drawer"
               >
-                <X className="w-5 h-5" />
+                <X className="h-5 w-5" />
               </button>
             </div>
 
-            <form onSubmit={handleSaveProduct} className="flex-1 space-y-8 font-sans pb-10">
+            <form onSubmit={handleSaveProduct} className="flex-1 space-y-8 pb-10 font-sans">
               <div className="space-y-4">
-                <label className="block text-[11px] tracking-widest uppercase font-bold text-on-surface-variant">
-                  Primary Imagery URL
+                <label className="block text-[11px] font-bold uppercase tracking-widest text-on-surface-variant">
+                  Primary Image URL
                 </label>
+
                 <input
-                  required
                   type="url"
-                  value={imgUrl}
-                  onChange={(e) => setImgUrl(e.target.value)}
-                  className="w-full bg-transparent border-0 border-b border-primary/20 focus:ring-0 focus:border-secondary transition-colors text-xs font-sans text-on-surface py-2 outline-none"
-                  placeholder="https://lh3.googleusercontent.com/..."
+                  required
+                  value={imageUrl}
+                  onChange={(e) => setImageUrl(e.target.value)}
+                  className="w-full border-b border-primary/20 bg-transparent py-3 text-xs text-primary outline-none transition-colors placeholder:text-on-surface-variant/30 focus:border-secondary"
+                  placeholder="https://example.com/product-image.jpg"
                 />
-                <div className="aspect-video w-full rounded-2xl border-2 border-dashed border-outline-variant/30 flex items-center justify-center bg-[#fcf9f4] p-1">
-                  <img
-                    alt="Preview of registered specimen"
-                    className="w-full h-full object-cover rounded-xl"
-                    src={
-                      imgUrl ||
-                      "https://lh3.googleusercontent.com/aida-public/AB6AXuABpV63oOEC6BG81Ofbf81e4xEZt_8jeHnQdCYNpJXvBBjWclO7xI5fx2_2yxv4D2dcpQzBAfhqpbMTWYrzMlQucJ12BiCSbQcHCdEk1ftjWTtFW9218imzoBCj4azNQoN9XbDsgLAyxzpeMem0MPCXdZyX8RgIT8wYl9SJ0ZeUwR4B8coMPG7bfSBji1L_FVwRv09aVj4gj3iBi2bELO5pNU-JRdDnk7BAhLSopmibPKU4sPImjcyFzetJUhpo0S02osuwa6HvHFJO"
-                    }
-                  />
+
+                <div className="flex aspect-video w-full items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed border-outline-variant/30 bg-[#fcf9f4] p-1">
+                  {imageUrl ? (
+                    <img
+                      alt="Preview of registered specimen"
+                      className="h-full w-full rounded-xl object-cover"
+                      src={imageUrl}
+                    />
+                  ) : (
+                    <div className="text-xs uppercase tracking-widest text-on-surface-variant">
+                      No image selected
+                    </div>
+                  )}
                 </div>
               </div>
 
               <div className="space-y-8">
                 <div className="relative">
-                  <label className="block text-[11px] tracking-widest uppercase font-bold text-on-surface-variant mb-2">
+                  <label className="mb-2 block text-[11px] font-bold uppercase tracking-widest text-on-surface-variant">
                     Product Designation Name
                   </label>
                   <input
@@ -415,111 +498,204 @@ export const AdminProducts: React.FC = () => {
                     type="text"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    className="w-full bg-transparent border-b border-primary/20 py-3 font-serif text-lg focus:outline-none focus:border-secondary transition-colors placeholder:text-on-surface-variant/20 italic outline-none text-[#31032c]"
+                    className="w-full border-b border-primary/20 bg-transparent py-3 font-serif text-lg italic text-[#31032c] outline-none transition-colors placeholder:text-on-surface-variant/20 focus:border-secondary"
                     placeholder="e.g. Vintage Pear Cut Diamond"
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-8">
-                  <div className="relative font-sans text-sm">
-                    <label className="block text-[11px] tracking-widest uppercase font-bold text-on-surface-variant mb-2">
+                  <div className="relative text-sm">
+                    <label className="mb-2 block text-[11px] font-bold uppercase tracking-widest text-on-surface-variant">
                       Category Line
                     </label>
                     <select
                       value={category}
                       onChange={(e) => setCategory(e.target.value)}
-                      className="w-full bg-transparent border-b border-primary/20 py-3 focus:outline-none focus:border-secondary transition-colors outline-none cursor-pointer text-xs"
+                      className="w-full cursor-pointer border-b border-primary/20 bg-transparent py-3 text-xs outline-none transition-colors focus:border-secondary"
                     >
-                      <option value="COLLECTIONS">Collections</option>
-                      <option value="BESPOKE">Bespoke</option>
-                      <option value="HERITAGE">Heritage</option>
+                      <option value="Collections">Collections</option>
+                      <option value="Bespoke">Bespoke</option>
+                      <option value="Heritage">Heritage</option>
+                      <option value="Rings">Rings</option>
+                      <option value="Necklaces">Necklaces</option>
+                      <option value="Raw Stones">Raw Stones</option>
                     </select>
                   </div>
 
-                  <div className="relative font-sans text-sm">
-                    <label className="block text-[11px] tracking-widest uppercase font-bold text-on-surface-variant mb-2">
+                  <div className="relative text-sm">
+                    <label className="mb-2 block text-[11px] font-bold uppercase tracking-widest text-on-surface-variant">
                       Gemstone Type
                     </label>
                     <select
                       value={stoneType}
                       onChange={(e) => setStoneType(e.target.value)}
-                      className="w-full bg-transparent border-b border-primary/20 py-3 focus:outline-none focus:border-secondary transition-colors outline-none cursor-pointer text-xs"
+                      className="w-full cursor-pointer border-b border-primary/20 bg-transparent py-3 text-xs outline-none transition-colors focus:border-secondary"
                     >
-                      <option value="EMERALD">Emerald</option>
-                      <option value="SAPPHIRE">Sapphire</option>
-                      <option value="RUBY">Ruby</option>
-                      <option value="DIAMOND">Diamond</option>
-                      <option value="AMETHYST">Amethyst</option>
-                      <option value="AQUAMARINE">Aquamarine</option>
-                      <option value="MORGANITE">Morganite</option>
-                      <option value="OPAL">Opal</option>
+                      <option value="Emerald">Emerald</option>
+                      <option value="Sapphire">Sapphire</option>
+                      <option value="Ruby">Ruby</option>
+                      <option value="Diamond">Diamond</option>
+                      <option value="Amethyst">Amethyst</option>
+                      <option value="Aquamarine">Aquamarine</option>
+                      <option value="Morganite">Morganite</option>
+                      <option value="Opal">Opal</option>
+                      <option value="Citrine">Citrine</option>
                     </select>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-8">
-                  <div className="relative font-sans text-sm">
-                    <label className="block text-[11px] tracking-widest uppercase font-bold text-on-surface-variant mb-2">
-                      Price (USD)
+                  <div className="relative text-sm">
+                    <label className="mb-2 block text-[11px] font-bold uppercase tracking-widest text-on-surface-variant">
+                      Stone Color
+                    </label>
+                    <input
+                      type="text"
+                      value={stoneColor}
+                      onChange={(e) => setStoneColor(e.target.value)}
+                      className="w-full border-b border-primary/20 bg-transparent py-3 text-xs text-primary outline-none transition-colors focus:border-secondary"
+                      placeholder="e.g. Cornflower Blue"
+                    />
+                  </div>
+
+                  <div className="relative text-sm">
+                    <label className="mb-2 block text-[11px] font-bold uppercase tracking-widest text-on-surface-variant">
+                      Carat Weight
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={caratWeight}
+                      onChange={(e) =>
+                        setCaratWeight(e.target.value === "" ? "" : Number(e.target.value))
+                      }
+                      className="w-full border-b border-primary/20 bg-transparent py-3 text-xs text-primary outline-none transition-colors focus:border-secondary"
+                      placeholder="e.g. 2.50"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-8">
+                  <div className="relative text-sm">
+                    <label className="mb-2 block text-[11px] font-bold uppercase tracking-widest text-on-surface-variant">
+                      Price (INR)
                     </label>
                     <input
                       required
                       type="number"
+                      min="1"
                       value={price}
                       onChange={(e) => setPrice(Number(e.target.value))}
-                      className="w-full bg-transparent border-b border-primary/20 py-3 focus:outline-none focus:border-secondary transition-colors text-xs text-primary"
+                      className="w-full border-b border-primary/20 bg-transparent py-3 text-xs text-primary outline-none transition-colors focus:border-secondary"
                       placeholder="5000"
                     />
                   </div>
 
-                  <div className="relative font-sans text-sm">
-                    <label className="block text-[11px] tracking-widest uppercase font-bold text-on-surface-variant mb-2 font-sans text-xs">
+                  <div className="relative text-sm">
+                    <label className="mb-2 block text-[11px] font-bold uppercase tracking-widest text-on-surface-variant">
                       Reference RefCode
                     </label>
                     <input
                       type="text"
                       value={refCode}
                       onChange={(e) => setRefCode(e.target.value)}
-                      className="w-full bg-transparent border-b border-primary/20 py-3 focus:outline-none focus:border-secondary transition-colors text-xs text-primary font-mono uppercase"
-                      placeholder="e.g. RG-2024-001"
+                      className="w-full border-b border-primary/20 bg-transparent py-3 font-mono text-xs uppercase text-primary outline-none transition-colors focus:border-secondary"
+                      placeholder="e.g. RG-2026-001"
                     />
                   </div>
                 </div>
 
+                <div className="grid grid-cols-2 gap-8">
+                  <div className="relative text-sm">
+                    <label className="mb-2 block text-[11px] font-bold uppercase tracking-widest text-on-surface-variant">
+                      Origin
+                    </label>
+                    <input
+                      type="text"
+                      value={origin}
+                      onChange={(e) => setOrigin(e.target.value)}
+                      className="w-full border-b border-primary/20 bg-transparent py-3 text-xs text-primary outline-none transition-colors focus:border-secondary"
+                      placeholder="e.g. Kashmir"
+                    />
+                  </div>
+
+                  <div className="relative text-sm">
+                    <label className="mb-2 block text-[11px] font-bold uppercase tracking-widest text-on-surface-variant">
+                      Certification
+                    </label>
+                    <input
+                      type="text"
+                      value={certification}
+                      onChange={(e) => setCertification(e.target.value)}
+                      className="w-full border-b border-primary/20 bg-transparent py-3 text-xs text-primary outline-none transition-colors focus:border-secondary"
+                      placeholder="e.g. GIA Verified"
+                    />
+                  </div>
+                </div>
+
+                <div className="relative text-sm">
+                  <label className="mb-2 block text-[11px] font-bold uppercase tracking-widest text-on-surface-variant">
+                    Stock Quantity
+                  </label>
+                  <input
+                    required
+                    type="number"
+                    min="0"
+                    value={stockQty}
+                    onChange={(e) => setStockQty(Number(e.target.value))}
+                    className="w-full border-b border-primary/20 bg-transparent py-3 text-xs text-primary outline-none transition-colors focus:border-secondary"
+                    placeholder="5"
+                  />
+                </div>
+
                 <div className="relative">
-                  <label className="block text-[11px] tracking-widest uppercase font-bold text-on-surface-variant mb-2">
+                  <label className="mb-2 block text-[11px] font-bold uppercase tracking-widest text-on-surface-variant">
                     Curation Story & Descriptions
                   </label>
                   <textarea
                     required
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
-                    className="w-full bg-transparent border-b border-primary/20 py-3 font-serif text-sm focus:outline-none focus:border-secondary transition-colors placeholder:text-on-surface-variant/20 resize-none italic leading-relaxed text-[#31032c] outline-none"
+                    className="w-full resize-none border-b border-primary/20 bg-transparent py-3 font-serif text-sm italic leading-relaxed text-[#31032c] outline-none transition-colors placeholder:text-on-surface-variant/20 focus:border-secondary"
                     placeholder="Provide details about the cut, raw origins and refraction story of this piece..."
+                    rows={4}
+                  />
+                </div>
+
+                <div className="relative">
+                  <label className="mb-2 block text-[11px] font-bold uppercase tracking-widest text-on-surface-variant">
+                    Extended Story
+                  </label>
+                  <textarea
+                    value={story}
+                    onChange={(e) => setStory(e.target.value)}
+                    className="w-full resize-none border-b border-primary/20 bg-transparent py-3 font-serif text-sm italic leading-relaxed text-[#31032c] outline-none transition-colors placeholder:text-on-surface-variant/20 focus:border-secondary"
+                    placeholder="Optional long-form story for the product detail page..."
                     rows={4}
                   />
                 </div>
               </div>
 
-              <div className="pt-4 space-y-6">
+              <div className="space-y-6 pt-4">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="font-sans text-[12px] font-bold text-on-surface">
                       Publish Immediately
                     </p>
-                    <p className="text-[10px] text-on-surface-variant font-light">
+                    <p className="text-[10px] font-light text-on-surface-variant">
                       Make this specimen live on storefront immediately
                     </p>
                   </div>
                   <button
                     type="button"
                     onClick={() => setIsActive(!isActive)}
-                    className={`w-12 h-6 rounded-full flex items-center px-1 cursor-pointer transition-colors ${
+                    className={`flex h-6 w-12 cursor-pointer items-center rounded-full px-1 transition-colors ${
                       isActive ? "bg-secondary" : "bg-outline-variant/35"
                     }`}
                   >
                     <div
-                      className={`w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${
+                      className={`h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${
                         isActive ? "translate-x-6" : "translate-x-0"
                       }`}
                     />
@@ -531,19 +707,19 @@ export const AdminProducts: React.FC = () => {
                     <p className="font-sans text-[12px] font-bold text-on-surface">
                       Featured Specimen
                     </p>
-                    <p className="text-[10px] text-on-surface-variant font-light">
+                    <p className="text-[10px] font-light text-on-surface-variant">
                       Flag as premium limited series in grids
                     </p>
                   </div>
                   <button
                     type="button"
                     onClick={() => setIsFeatured(!isFeatured)}
-                    className={`w-12 h-6 rounded-full flex items-center px-1 cursor-pointer transition-colors ${
+                    className={`flex h-6 w-12 cursor-pointer items-center rounded-full px-1 transition-colors ${
                       isFeatured ? "bg-secondary" : "bg-outline-variant/35"
                     }`}
                   >
                     <div
-                      className={`w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${
+                      className={`h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${
                         isFeatured ? "translate-x-6" : "translate-x-0"
                       }`}
                     />
@@ -551,20 +727,40 @@ export const AdminProducts: React.FC = () => {
                 </div>
               </div>
 
-              <div className="pt-8 grid grid-cols-2 gap-4">
+              {imageUrl && (
+                <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+                  Primary image ready for save.
+                </div>
+              )}
+
+              {errorMsg && (
+                <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                  {errorMsg}
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-4 pt-8">
                 <button
                   type="button"
-                  onClick={() => setDrawerOpen(false)}
-                  className="py-4 border border-outline-variant/30 rounded-xl font-sans text-[11px] tracking-widest uppercase font-bold text-on-surface-variant hover:bg-[#fcf9f4] transition-colors cursor-pointer text-center"
+                  onClick={handleCloseDrawer}
+                  className="cursor-pointer rounded-xl border border-outline-variant/30 py-4 text-center font-sans text-[11px] font-bold uppercase tracking-widest text-on-surface-variant transition-colors hover:bg-[#fcf9f4]"
                 >
                   Discard Draft
                 </button>
 
                 <button
                   type="submit"
-                  className="py-4 bg-primary-container text-white rounded-xl font-sans text-[11px] tracking-widest uppercase font-bold shadow-lg shadow-primary/20 hover:scale-[1.02] transition-transform cursor-pointer text-center"
+                  disabled={saving}
+                  className="flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-primary-container py-4 text-center font-sans text-[11px] font-bold uppercase tracking-widest text-white shadow-lg shadow-primary/20 transition-transform hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:scale-100"
                 >
-                  Save to Inventory
+                  {saving ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    "Save to Inventory"
+                  )}
                 </button>
               </div>
             </form>
