@@ -54,6 +54,7 @@ export const ProductDetail: React.FC = () => {
         if (isMounted) {
           setProduct(null);
           setCatalog([]);
+          setMainImage("");
           setLoading(false);
           setErrorMsg("Product ID is missing.");
         }
@@ -119,6 +120,7 @@ export const ProductDetail: React.FC = () => {
     setAdded(false);
     setWishlisted(false);
     setOpenSection("characteristics");
+    setMainImage(product?.images?.[0] || product ? product?.images?.[0] || FALLBACK_IMAGE : "");
   }, [product?.id]);
 
   const maxQty = product?.stockQty && product.stockQty > 0 ? product.stockQty : undefined;
@@ -130,7 +132,10 @@ export const ProductDetail: React.FC = () => {
     if (!product) return;
     if (product.stockQty !== undefined && product.stockQty <= 0) return;
 
-    for (let i = 0; i < quantity; i += 1) {
+    const safeQty =
+      maxQty !== undefined ? Math.min(quantity, maxQty) : Math.max(quantity, 1);
+
+    for (let i = 0; i < safeQty; i += 1) {
       addItem({
         id: product.id,
         name: product.name,

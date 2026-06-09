@@ -4,7 +4,7 @@
  */
 
 import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useLocation } from "react-router-dom";
 import { Lock, ArrowRight, Loader2, BadgeCheck, ShieldCheck } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useCartStore } from "../store/cartStore";
@@ -59,9 +59,13 @@ async function getErrorMessage(response: Response, fallback: string) {
   return data?.error || data?.message || fallback;
 }
 
+const FALLBACK_IMAGE =
+  "https://lh3.googleusercontent.com/aida-public/AB6AXuBgYChKBe12r4qlu5f1BwwJo8Oi_KSdZnhnXCa6or78Xe6xhEG5vLm2wIiI8QKmrqeLpZkAUCBFuGssTzlKmO7XmHUmANHfKH9PHxiIMoyfGV8LswSQf-_RqZPbo2bX9pYJVUYTT7B3gqFpxAOcxIUj3Lml8GBzf4Kt8AoxKf7BJ65K2qL__kOJe9SLawFR8CzDVqI7WMDYtvJfuZiDyFfhmpif8WS6XajUgB2rlBiP6IonCjggwRyRhhsdY3n91W669Jtar9Vw6uM_";
+
 export const Checkout: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const items = useCartStore((state) => state.items);
   const numericSubtotal = useCartStore((state) => state.subtotal());
@@ -88,9 +92,19 @@ export const Checkout: React.FC = () => {
   const [checkoutErr, setCheckoutErr] = useState("");
 
   useEffect(() => {
+    if (!user) {
+      navigate(`/login?redirect=${encodeURIComponent(location.pathname)}`, { replace: true });
+    }
+  }, [user, navigate, location.pathname]);
+
+  useEffect(() => {
+    if (!user) return;
+
     const fetchAddresses = async () => {
       try {
         setLoadingAddresses(true);
+        setCheckoutErr("");
+
         const response = await fetch("/api/user/addresses", {
           method: "GET",
           credentials: "include",
@@ -112,6 +126,7 @@ export const Checkout: React.FC = () => {
           setSelectedAddrId(defaultAddress.id);
           setAddNewMode(false);
         } else {
+          setSelectedAddrId("");
           setAddNewMode(true);
         }
       } catch (error) {
@@ -122,12 +137,23 @@ export const Checkout: React.FC = () => {
       }
     };
 
-    fetchAddresses();
-  }, []);
+    void fetchAddresses();
+  }, [user]);
 
   const selectedAddress = useMemo(() => {
     return addresses.find((a) => a.id === selectedAddrId) || null;
   }, [addresses, selectedAddrId]);
+
+  const resetAddressForm = () => {
+    setLine1("");
+    setLine2("");
+    setZip("");
+    setCity("");
+    setStateName("");
+    setPhone("");
+    setFirst("");
+    setLast("");
+  };
 
   const handleAddNewAddress = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -151,12 +177,12 @@ export const Checkout: React.FC = () => {
         body: JSON.stringify({
           label: "Home",
           name: `${first} ${last}`.trim() || user?.name || "Customer",
-          phone,
-          line1,
-          line2: line2 || undefined,
-          city,
-          state: stateName,
-          zip,
+          phone: phone.trim(),
+          line1: line1.trim(),
+          line2: line2.trim() || undefined,
+          city: city.trim(),
+          state: stateName.trim(),
+          zip: zip.trim(),
           country: "India",
           isDefault: addresses.length === 0,
         }),
@@ -178,14 +204,7 @@ export const Checkout: React.FC = () => {
 
       setSelectedAddrId(created.id);
       setAddNewMode(false);
-      setLine1("");
-      setLine2("");
-      setZip("");
-      setCity("");
-      setStateName("");
-      setPhone("");
-      setFirst("");
-      setLast("");
+      resetAddressForm();
     } catch (error) {
       setCheckoutErr(error instanceof Error ? error.message : "Could not save address.");
     } finally {
@@ -196,13 +215,13 @@ export const Checkout: React.FC = () => {
   const handleContinueToReview = () => {
     setCheckoutErr("");
 
-    if (!selectedAddrId && !addNewMode) {
-      setCheckoutErr("Please select a delivery address.");
+    if (addNewMode) {
+      setCheckoutErr("Please save your address before continuing.");
       return;
     }
 
-    if (!selectedAddrId && addNewMode) {
-      setCheckoutErr("Please save your address before continuing.");
+    if (!selectedAddrId) {
+      setCheckoutErr("Please select a delivery address.");
       return;
     }
 
@@ -210,6 +229,16 @@ export const Checkout: React.FC = () => {
   };
 
   const handleOrderSubmission = async () => {
+    if (!user) {
+      navigate(`/login?redirect=${encodeURIComponent("/checkout")}`, { replace: true });
+      return;
+    }
+
+    if (items.length === 0) {
+      setCheckoutErr("Your cart is empty.");
+      return;
+    }
+
     if (!selectedAddress) {
       setCheckoutErr("Please select a valid shipping address.");
       return;
@@ -265,29 +294,44 @@ export const Checkout: React.FC = () => {
             razorpay_payment_id: string;
             razorpay_signature: string;
           }) => {
-            const verifyRes = await fetch("/api/orders/verify", {
-              method: "POST",
-              credentials: "include",
-              headers: {
-                "Content-Type": "application/json",
-                Accept: "application/json",
-              },
-              body: JSON.stringify({
-                orderId: orderData.orderId,
-                razorpayOrderId: response.razorpay_order_id,
-                razorpayPaymentId: response.razorpay_payment_id,
-                razorpaySignature: response.razorpay_signature,
-              }),
-            });
+            try {
+              const verifyRes = await fetch("/api/orders/verify", {
+                method: "POST",
+                credentials: "include",
+                headers: {
+                  "Content-Type": "application/json",
+                  Accept: "application/json",
+                },
+                body: JSON.stringify({
+                  orderId: orderData.orderId,
+                  razorpayOrderId: response.razorpay_order_id,
+                  razorpayPaymentId: response.razorpay_payment_id,
+                  razorpaySignature: response.razorpay_signature,
+                }),
+              });
 
-            if (!verifyRes.ok) {
-              setCheckoutErr(await getErrorMessage(verifyRes, "Payment verification failed."));
+              if (!verifyRes.ok) {
+                setCheckoutErr(
+                  await getErrorMessage(verifyRes, "Payment verification failed.")
+                );
+                setLoading(false);
+                return;
+              }
+
+              clearCart();
+              navigate(`/order-confirmation/${orderData.orderId}`, { replace: true });
+            } catch (error) {
+              setCheckoutErr(
+                error instanceof Error ? error.message : "Payment verification failed."
+              );
               setLoading(false);
-              return;
             }
-
-            clearCart();
-            navigate(`/order-confirmation/${orderData.orderId}`, { replace: true });
+          },
+          modal: {
+            ondismiss: () => {
+              setLoading(false);
+              setCheckoutErr("Payment was cancelled before completion.");
+            },
           },
           prefill: {
             name: user?.name || selectedAddress.name || "",
@@ -459,7 +503,11 @@ export const Checkout: React.FC = () => {
 
                       <button
                         type="button"
-                        onClick={() => setAddNewMode(true)}
+                        onClick={() => {
+                          setCheckoutErr("");
+                          setAddNewMode(true);
+                          resetAddressForm();
+                        }}
                         className="inline-block pt-2 text-xs font-bold uppercase tracking-widest text-secondary hover:underline"
                       >
                         + Add New Address
@@ -598,7 +646,11 @@ export const Checkout: React.FC = () => {
                         {addresses.length > 0 && (
                           <button
                             type="button"
-                            onClick={() => setAddNewMode(false)}
+                            onClick={() => {
+                              setCheckoutErr("");
+                              setAddNewMode(false);
+                              resetAddressForm();
+                            }}
                             className="cursor-pointer rounded-lg border border-primary/20 px-8 py-3 text-xs font-bold uppercase tracking-widest text-[#4f434b]"
                           >
                             Cancel
@@ -621,7 +673,7 @@ export const Checkout: React.FC = () => {
                     <button
                       type="button"
                       onClick={handleContinueToReview}
-                      disabled={!selectedAddrId}
+                      disabled={loadingAddresses || addNewMode || !selectedAddrId}
                       className="flex cursor-pointer items-center justify-center gap-3 rounded-xl bg-primary-container px-12 py-5 text-xs font-bold uppercase tracking-widest text-on-primary shadow-xl shadow-primary-container/20 transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       Continue to review
@@ -725,7 +777,7 @@ export const Checkout: React.FC = () => {
                         <img
                           alt={item.name}
                           className="h-full w-full object-cover"
-                          src={item.image || ""}
+                          src={item.image || FALLBACK_IMAGE}
                         />
                       </div>
 

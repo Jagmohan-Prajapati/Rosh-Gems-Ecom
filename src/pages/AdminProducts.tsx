@@ -16,6 +16,9 @@ function formatPrice(amount: number): string {
   }).format(amount);
 }
 
+const FALLBACK_IMAGE =
+  "https://lh3.googleusercontent.com/aida-public/AB6AXuBgYChKBe12r4qlu5f1BwwJo8Oi_KSdZnhnXCa6or78Xe6xhEG5vLm2wIiI8QKmrqeLpZkAUCBFuGssTzlKmO7XmHUmANHfKH9PHxiIMoyfGV8LswSQf-_RqZPbo2bX9pYJVUYTT7B3gqFpxAOcxIUj3Lml8GBzf4Kt8AoxKf7BJ65K2qL__kOJe9SLawFR8CzDVqI7WMDYtvJfuZiDyFfhmpif8WS6XajUgB2rlBiP6IonCjggwRyRhhsdY3n91W669Jtar9Vw6uM_";
+
 export const AdminProducts: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
@@ -42,11 +45,12 @@ export const AdminProducts: React.FC = () => {
   const [isFeatured, setIsFeatured] = useState(false);
 
   const [saving, setSaving] = useState(false);
-  const [errorMsg, setErrorMsg] = useState("");
+  const [pageError, setPageError] = useState("");
+  const [formError, setFormError] = useState("");
 
   const fetchInventory = async () => {
     setLoading(true);
-    setErrorMsg("");
+    setPageError("");
 
     try {
       const res = await fetch("/api/products", {
@@ -65,18 +69,28 @@ export const AdminProducts: React.FC = () => {
     } catch (err) {
       console.error("Failed to load inventory from API.", err);
       setProducts([]);
-      setErrorMsg(err instanceof Error ? err.message : "Failed to load inventory.");
+      setPageError(err instanceof Error ? err.message : "Failed to load inventory.");
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchInventory();
+    void fetchInventory();
   }, []);
 
-  const buildNextRefCode = () =>
-    `RG-${new Date().getFullYear()}-${String(products.length + 1).padStart(3, "0")}`;
+  const buildNextRefCode = () => {
+    const year = new Date().getFullYear();
+    const numericParts = products
+      .map((p) => p.refCode || "")
+      .map((code) => {
+        const match = code.match(/(\d+)$/);
+        return match ? Number(match[1]) : 0;
+      });
+
+    const next = (numericParts.length ? Math.max(...numericParts) : 0) + 1;
+    return `RG-${year}-${String(next).padStart(3, "0")}`;
+  };
 
   const resetForm = () => {
     setName("");
@@ -95,13 +109,13 @@ export const AdminProducts: React.FC = () => {
     setIsActive(true);
     setIsFeatured(false);
     setSelectedProd(null);
-    setErrorMsg("");
+    setFormError("");
   };
 
   const handleOpenDrawer = (mode: "create" | "edit", prod: Product | null = null) => {
     setEditMode(mode);
     setDrawerOpen(true);
-    setErrorMsg("");
+    setFormError("");
 
     if (mode === "edit" && prod) {
       setSelectedProd(prod);
@@ -133,25 +147,30 @@ export const AdminProducts: React.FC = () => {
 
   const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
-    setErrorMsg("");
+    setFormError("");
 
     if (!name.trim()) {
-      setErrorMsg("Product name is required.");
+      setFormError("Product name is required.");
       return;
     }
 
     if (!imageUrl.trim()) {
-      setErrorMsg("Primary image URL is required.");
+      setFormError("Primary image URL is required.");
       return;
     }
 
     if (!price || Number(price) <= 0) {
-      setErrorMsg("Price must be greater than 0.");
+      setFormError("Price must be greater than 0.");
       return;
     }
 
     if (Number(stockQty) < 0) {
-      setErrorMsg("Stock quantity cannot be negative.");
+      setFormError("Stock quantity cannot be negative.");
+      return;
+    }
+
+    if (!description.trim()) {
+      setFormError("Description is required.");
       return;
     }
 
@@ -200,7 +219,7 @@ export const AdminProducts: React.FC = () => {
       handleCloseDrawer();
     } catch (err) {
       console.error("Failed to save product.", err);
-      setErrorMsg(err instanceof Error ? err.message : "Failed to save product.");
+      setFormError(err instanceof Error ? err.message : "Failed to save product.");
     } finally {
       setSaving(false);
     }
@@ -210,6 +229,8 @@ export const AdminProducts: React.FC = () => {
     if (!window.confirm("Confirm deletion of this rare gem specimen?")) return;
 
     try {
+      setPageError("");
+
       const res = await fetch(`/api/products/${id}`, {
         method: "DELETE",
         credentials: "include",
@@ -225,7 +246,7 @@ export const AdminProducts: React.FC = () => {
       await fetchInventory();
     } catch (err) {
       console.error("Failed to delete product.", err);
-      setErrorMsg(err instanceof Error ? err.message : "Failed to delete product.");
+      setPageError(err instanceof Error ? err.message : "Failed to delete product.");
     }
   };
 
@@ -283,9 +304,9 @@ export const AdminProducts: React.FC = () => {
         </header>
 
         <div className="no-scrollbar flex-grow overflow-auto px-12 py-10">
-          {errorMsg && (
+          {pageError && (
             <div className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-              {errorMsg}
+              {pageError}
             </div>
           )}
 
@@ -339,7 +360,7 @@ export const AdminProducts: React.FC = () => {
                             <img
                               className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
                               alt={p.name}
-                              src={p.images?.[0] || ""}
+                              src={p.images?.[0] || FALLBACK_IMAGE}
                             />
                           </div>
                           <div>
@@ -368,7 +389,7 @@ export const AdminProducts: React.FC = () => {
                       </td>
 
                       <td className="px-8 py-5">
-                        <div className="relative inline-flex cursor-pointer select-none items-center font-sans">
+                        <div className="relative inline-flex select-none items-center font-sans">
                           <div
                             className={`h-5 w-10 rounded-full transition-colors ${
                               p.isActive ? "bg-secondary" : "bg-outline-variant/30"
@@ -733,9 +754,9 @@ export const AdminProducts: React.FC = () => {
                 </div>
               )}
 
-              {errorMsg && (
+              {formError && (
                 <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                  {errorMsg}
+                  {formError}
                 </div>
               )}
 
