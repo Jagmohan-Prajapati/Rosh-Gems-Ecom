@@ -31,7 +31,6 @@ export interface Address {
 
 export interface Product {
   id: string;
-  refCode?: string;
   name: string;
   description: string;
   price: number;
@@ -46,8 +45,6 @@ export interface Product {
   isActive?: boolean;
   isFeatured?: boolean;
   createdAt?: string | Date;
-  currency?: "INR" | string;
-  story?: string;
 }
 
 export interface OrderItemProduct {

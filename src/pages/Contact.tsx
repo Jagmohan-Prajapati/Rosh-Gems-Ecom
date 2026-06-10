@@ -93,25 +93,16 @@ export const Contact: React.FC = () => {
               </h2>
 
               <div className="space-y-8 font-sans text-sm text-[#4f434b] leading-relaxed">
-                <div>
-                  <p className="font-bold text-[#8f4c30] uppercase tracking-widest text-[10px] mb-2">
-                    London Showroom
-                  </p>
-                  <p>72 Heritage Lane, Mayfair</p>
-                  <p>London, W1S 2YG</p>
-                  <p className="text-[#31032c] font-semibold mt-2">
-                    london@roshgems.com
-                  </p>
-                </div>
+                 
 
                 <div>
                   <p className="font-bold text-[#8f4c30] uppercase tracking-widest text-[10px] mb-2">
-                    New York Office
+                    Bengaluru Office
                   </p>
-                  <p>242 Central Park West</p>
-                  <p>New York, NY 10024</p>
+                  <p>We are currently looking for a better place</p>
+                  <p>We'll available soon...</p>
                   <p className="text-[#31032c] font-semibold mt-2">
-                    nyc@roshgems.com
+                    roshgems1@gmail.com
                   </p>
                 </div>
 
@@ -121,7 +112,7 @@ export const Contact: React.FC = () => {
                   </p>
                   <p>Live Curator Assistance: Monday - Friday (9AM - 6PM GMT)</p>
                   <p className="font-bold text-[#31032c] mt-1">
-                    +44 20 7946 0123
+                    +91 XX XXXX XXXX
                   </p>
                 </div>
               </div>

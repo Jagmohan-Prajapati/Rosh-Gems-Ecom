@@ -49,7 +49,25 @@ interface AuthRequest extends Request {
   user: AuthUser;
 }
 
-const upload = multer({ dest: "uploads/" });
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 8 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const allowedMimeTypes = [
+      "image/jpeg",
+      "image/png",
+      "image/webp",
+      "image/avif",
+    ];
+
+    if (allowedMimeTypes.includes(file.mimetype)) {
+      cb(null, true);
+      return;
+    }
+
+    cb(new Error("Only JPEG, PNG, WEBP and AVIF images are allowed."));
+  },
+});
 
 const transporter = nodemailer.createTransport({
   service: "gmail",
@@ -165,6 +183,92 @@ async function isAdmin(req: Request, res: Response, next: NextFunction) {
   }
 }
 
+function extractCloudinaryPublicId(imageUrl: string) {
+  const match = imageUrl.match(/\/upload\/(?:v\d+\/)?(.+?)(?:\.[a-zA-Z0-9]+)?$/);
+  return match?.[1] ?? null;
+}
+
+function toTrimmedString(value: unknown, fallback = "") {
+  return typeof value === "string" ? value.trim() || fallback : fallback;
+}
+
+function toOptionalTrimmedString(value: unknown) {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed ? trimmed : null;
+}
+
+function toNumber(value: unknown, fallback = 0) {
+  const num = Number(value);
+  return Number.isFinite(num) ? num : fallback;
+}
+
+function toOptionalNumber(value: unknown) {
+  if (value === undefined || value === null || value === "") return null;
+  const num = Number(value);
+  return Number.isFinite(num) ? num : null;
+}
+
+function toBoolean(value: unknown, fallback = false) {
+  return typeof value === "boolean" ? value : fallback;
+}
+
+function sanitizeProductImages(value: unknown) {
+  if (!Array.isArray(value)) return [];
+  return value.filter((item): item is string => typeof item === "string" && item.trim().length > 0);
+}
+
+function buildProductPayload(body: any) {
+  const name = toTrimmedString(body?.name);
+  const description = toTrimmedString(body?.description);
+  const images = sanitizeProductImages(body?.images);
+  const price = toNumber(body?.price, NaN);
+  const stockQty = toNumber(body?.stockQty, NaN);
+  const caratWeight = toOptionalNumber(body?.caratWeight);
+
+  if (!name) {
+    return { error: "Product name is required." };
+  }
+
+  if (!description) {
+    return { error: "Description is required." };
+  }
+
+  if (!images.length) {
+    return { error: "At least one product image is required." };
+  }
+
+  if (!Number.isFinite(price) || price <= 0) {
+    return { error: "Price must be greater than 0." };
+  }
+
+  if (!Number.isFinite(stockQty) || stockQty < 0) {
+    return { error: "Stock quantity cannot be negative." };
+  }
+
+  if (caratWeight !== null && caratWeight <= 0) {
+    return { error: "Carat weight must be greater than 0 when provided." };
+  }
+
+  return {
+    data: {
+      name,
+      description,
+      price,
+      images,
+      category: toTrimmedString(body?.category, "Raw Stones"),
+      stoneType: toTrimmedString(body?.stoneType, "Sapphire"),
+      stoneColor: toTrimmedString(body?.stoneColor, "Blue"),
+      caratWeight,
+      origin: toOptionalTrimmedString(body?.origin),
+      certification: toOptionalTrimmedString(body?.certification),
+      stockQty,
+      isActive: toBoolean(body?.isActive, true),
+      isFeatured: toBoolean(body?.isFeatured, false),
+    },
+  };
+}
+
 /* AUTH */
 
 app.post("/api/auth/login", async (req, res) => {
@@ -186,22 +290,13 @@ app.post("/api/auth/login", async (req, res) => {
         return res.status(401).json({ error: "Invalid credentials" });
       }
 
-      const token = await new SignJWT({
+      const token = await signAuthToken({
         id: "admin",
         email,
         role: "ADMIN",
-      })
-        .setProtectedHeader({ alg: "HS256" })
-        .setIssuedAt()
-        .setExpirationTime("7d")
-        .sign(JWT_SECRET);
-
-      res.cookie("token", token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        maxAge: 7 * 24 * 60 * 60 * 1000,
       });
+
+      res.cookie(COOKIE_NAME, token, authCookieOptions());
 
       return res.json({
         user: {
@@ -225,33 +320,16 @@ app.post("/api/auth/login", async (req, res) => {
       return res.status(401).json({ error: "Invalid credentials" });
     }
 
-    const token = await new SignJWT({
+    const token = await signAuthToken({
       id: user.id,
       email: user.email,
       role: user.role,
-    })
-      .setProtectedHeader({ alg: "HS256" })
-      .setIssuedAt()
-      .setExpirationTime("7d")
-      .sign(JWT_SECRET);
-
-    res.cookie("token", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
+    res.cookie(COOKIE_NAME, token, authCookieOptions());
+
     return res.json({
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        phone: user.phone ?? "",
-        role: user.role,
-        isVerified: user.isVerified,
-        createdAt: user.createdAt,
-      },
+      user: sanitizeUser(user),
     });
   } catch {
     return res.status(500).json({ error: "Login failed" });
@@ -354,33 +432,16 @@ app.post("/api/auth/verify-otp", async (req, res) => {
       },
     });
 
-    const token = await new SignJWT({
+    const token = await signAuthToken({
       id: user.id,
       email: user.email,
       role: user.role,
-    })
-      .setProtectedHeader({ alg: "HS256" })
-      .setIssuedAt()
-      .setExpirationTime("7d")
-      .sign(JWT_SECRET);
-
-    res.cookie("token", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
+    res.cookie(COOKIE_NAME, token, authCookieOptions());
+
     return res.json({
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        phone: user.phone ?? "",
-        role: user.role,
-        isVerified: user.isVerified,
-        createdAt: user.createdAt,
-      },
+      user: sanitizeUser(user),
     });
   } catch {
     return res.status(500).json({ error: "Registration failed" });
@@ -464,7 +525,7 @@ app.post("/api/auth/reset-password", async (req, res) => {
 });
 
 app.get("/api/auth/me", async (req, res) => {
-  const token = req.cookies.token;
+  const token = req.cookies[COOKIE_NAME];
   if (!token) {
     return res.json({ user: null });
   }
@@ -726,6 +787,50 @@ app.delete("/api/user/addresses/:id", isAuth, async (req, res) => {
 
 /* PRODUCTS */
 
+app.post("/api/upload", isAdmin, upload.single("image"), async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: "No image file uploaded." });
+  }
+
+  try {
+    const result = await new Promise<{
+      secure_url: string;
+      public_id: string;
+    }>((resolve, reject) => {
+      const stream = cloudinary.uploader.upload_stream(
+        {
+          folder: "roshgems/products",
+          resource_type: "image",
+          transformation: [{ quality: "auto", fetch_format: "auto" }],
+        },
+        (error, result) => {
+          if (error || !result) {
+            reject(error || new Error("Upload failed"));
+            return;
+          }
+          resolve({
+            secure_url: result.secure_url,
+            public_id: result.public_id,
+          });
+        }
+      );
+
+      stream.end(req.file.buffer);
+    });
+
+    return res.json({
+      url: result.secure_url,
+      secure_url: result.secure_url,
+      public_id: result.public_id,
+    });
+  } catch (error) {
+    console.error("Cloudinary upload failed:", error);
+    return res.status(500).json({
+      error: error instanceof Error ? error.message : "Upload failed",
+    });
+  }
+});
+
 app.get("/api/products", async (req, res) => {
   const { category, stoneType, stoneColor, search, sort, featured } = req.query;
   const prisma = getPrisma();
@@ -777,25 +882,53 @@ app.post("/api/products", isAdmin, async (req, res) => {
   const prisma = getPrisma();
 
   try {
-    const product = await prisma.product.create({ data: req.body });
-    res.status(201).json({ product });
-  } catch {
-    res.status(500).json({ error: "Failed to create product" });
+    const parsed = buildProductPayload(req.body);
+
+    if ("error" in parsed) {
+      return res.status(400).json({ error: parsed.error });
+    }
+
+    const product = await prisma.product.create({ data: parsed.data });
+    return res.status(201).json({ product });
+  } catch (error) {
+    console.error("CREATE PRODUCT ERROR:", error);
+    return res.status(500).json({
+      error: error instanceof Error ? error.message : "Failed to create product",
+    });
   }
 });
 
 app.patch("/api/products/:id", isAdmin, async (req, res) => {
   const prisma = getPrisma();
+  const { id } = req.params;
 
   try {
-    const product = await prisma.product.update({
-      where: { id: req.params.id },
-      data: req.body,
+    const existing = await prisma.product.findUnique({
+      where: { id },
+      select: { id: true },
     });
 
-    res.json({ product });
-  } catch {
-    res.status(500).json({ error: "Failed to update product" });
+    if (!existing) {
+      return res.status(404).json({ error: "Product not found" });
+    }
+
+    const parsed = buildProductPayload(req.body);
+
+    if ("error" in parsed) {
+      return res.status(400).json({ error: parsed.error });
+    }
+
+    const product = await prisma.product.update({
+      where: { id },
+      data: parsed.data,
+    });
+
+    return res.json({ product });
+  } catch (error) {
+    console.error("UPDATE PRODUCT ERROR:", error);
+    return res.status(500).json({
+      error: error instanceof Error ? error.message : "Failed to update product",
+    });
   }
 });
 
@@ -815,13 +948,11 @@ app.delete("/api/products/:id", isAdmin, async (req, res) => {
     if (Array.isArray(product.images) && product.images.length > 0) {
       await Promise.all(
         product.images.map(async (imageUrl: string) => {
+          const publicId = extractCloudinaryPublicId(imageUrl);
+          if (!publicId) return null;
+
           try {
-            const match = imageUrl.match(
-              /\/upload\/(?:v\d+\/)?(.+)\.(jpg|jpeg|png|webp|avif)$/i
-            );
-            if (!match) return null;
-            const publicId = match[1];
-            return cloudinary.uploader.destroy(publicId);
+            return await cloudinary.uploader.destroy(publicId);
           } catch {
             return null;
           }
@@ -836,23 +967,6 @@ app.delete("/api/products/:id", isAdmin, async (req, res) => {
     res.json({ success: true });
   } catch {
     res.status(500).json({ error: "Failed to delete product" });
-  }
-});
-
-app.post("/api/upload", isAdmin, upload.single("file"), async (req, res) => {
-  if (!req.file) return res.status(400).json({ error: "No file uploaded" });
-
-  try {
-    const result = await cloudinary.uploader.upload(req.file.path, {
-      folder: "roshgems",
-    });
-
-    res.json({
-      secure_url: result.secure_url,
-      public_id: result.public_id,
-    });
-  } catch {
-    res.status(500).json({ error: "Upload failed" });
   }
 });
 

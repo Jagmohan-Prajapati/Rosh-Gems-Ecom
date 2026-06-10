@@ -6,6 +6,10 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Product } from "../types";
+import image1 from "../assets/Emerald.jpg";
+import image2 from "../assets/Ruby.jpg";
+import image3 from "../assets/Sapphire.jpg";
+import image4 from "../assets/citrine.jpg";
 
 function formatPrice(amount: number): string {
   return new Intl.NumberFormat("en-IN", {
@@ -32,26 +36,22 @@ const STONE_CARDS: StoneCard[] = [
   {
     name: "Emerald",
     category: "Emerald",
-    image:
-      "https://images.unsplash.com/photo-1617038220319-276d3cfab638?auto=format&fit=crop&w=900&q=80",
+    image:image1,
   },
   {
     name: "Ruby",
     category: "Ruby",
-    image:
-      "https://images.unsplash.com/photo-1615485290382-441e4d049cb5?auto=format&fit=crop&w=900&q=80",
+    image:image2,
   },
   {
     name: "Sapphire",
     category: "Sapphire",
-    image:
-      "https://images.unsplash.com/photo-1617038260897-41a1f14a8ca0?auto=format&fit=crop&w=900&q=80",
+    image:image3,
   },
   {
     name: "Citrine",
     category: "Citrine",
-    image:
-      "https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?auto=format&fit=crop&w=900&q=80",
+    image:image4,
   },
 ];
 

@@ -44,7 +44,7 @@ export const Navbar: React.FC = () => {
           to="/"
           className="text-2xl font-medium tracking-widest text-[#31032c] hover:opacity-90 md:text-3xl"
         >
-          RoshGems
+          ROSH GEMS
         </Link>
 
         <div className="hidden items-center gap-8 lg:flex">
@@ -121,16 +121,14 @@ export const Navbar: React.FC = () => {
             </button>
           </div>
         ) : (
-          <Link
-            to={`/login?redirect=${encodeURIComponent(location.pathname)}`}
-            className="flex items-center p-1 text-[#31032c] transition-transform hover:scale-105"
-            aria-label="User account"
-          >
-            <span className="material-symbols-outlined select-none text-2xl">
-              person
-            </span>
-          </Link>
-        )}
+            <Link
+              to={`/login?redirect=${encodeURIComponent(location.pathname)}`}
+              className="flex items-center p-1 text-[#31032c] transition-transform hover:scale-105"
+              aria-label="User account"
+            >
+              <User className="h-6 w-6" />
+            </Link>
+          )}
       </div>
     </nav>
   );

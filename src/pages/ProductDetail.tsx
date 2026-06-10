@@ -4,7 +4,7 @@
  */
 
 import React, { useEffect, useMemo, useState } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import {
   ChevronRight,
   Heart,
@@ -33,7 +33,6 @@ const FALLBACK_IMAGE =
 
 export const ProductDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
   const addItem = useCartStore((state) => state.addItem);
 
   const [product, setProduct] = useState<Product | null>(null);
@@ -108,7 +107,7 @@ export const ProductDetail: React.FC = () => {
       }
     };
 
-    fetchProductData();
+    void fetchProductData();
 
     return () => {
       isMounted = false;
@@ -120,7 +119,7 @@ export const ProductDetail: React.FC = () => {
     setAdded(false);
     setWishlisted(false);
     setOpenSection("characteristics");
-    setMainImage(product?.images?.[0] || product ? product?.images?.[0] || FALLBACK_IMAGE : "");
+    setMainImage(product?.images?.[0] || FALLBACK_IMAGE);
   }, [product?.id]);
 
   const maxQty = product?.stockQty && product.stockQty > 0 ? product.stockQty : undefined;
@@ -313,7 +312,7 @@ export const ProductDetail: React.FC = () => {
 
             <div className="space-y-6">
               <p className="rounded-none border-l-2 border-[#8f4c30]/50 bg-[#f0ede9]/25 py-2 pl-4 font-serif text-lg italic leading-relaxed text-[#4f434b] opacity-90">
-                "{product.story || product.description}"
+                {product.description}
               </p>
 
               <div className="flex flex-col gap-3 font-sans sm:flex-row sm:flex-wrap">
@@ -423,8 +422,8 @@ export const ProductDetail: React.FC = () => {
                       {product.certification || "N/A"}
                     </p>
                     <p>
-                      <strong className="text-primary">Reference Code:</strong>{" "}
-                      {product.refCode || "N/A"}
+                      <strong className="text-primary">Category:</strong>{" "}
+                      {product.category || "N/A"}
                     </p>
                   </div>
                 )}

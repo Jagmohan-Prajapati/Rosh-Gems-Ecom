@@ -3,8 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useEffect, useMemo, useState } from "react";
-import { Search, Plus, Pencil, Trash2, X, Loader2 } from "lucide-react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Search, Plus, Pencil, Trash2, X, Loader2, UploadCloud, ImageOff } from "lucide-react";
 import { AdminSidebar } from "../components/AdminSidebar";
 import { Product } from "../types";
 
@@ -29,7 +29,6 @@ export const AdminProducts: React.FC = () => {
   const [selectedProd, setSelectedProd] = useState<Product | null>(null);
 
   const [name, setName] = useState("");
-  const [refCode, setRefCode] = useState("");
   const [category, setCategory] = useState("Collections");
   const [stoneType, setStoneType] = useState("Emerald");
   const [stoneColor, setStoneColor] = useState("");
@@ -39,10 +38,14 @@ export const AdminProducts: React.FC = () => {
   const [stockQty, setStockQty] = useState<number>(5);
   const [price, setPrice] = useState<number>(1000);
   const [description, setDescription] = useState("");
-  const [story, setStory] = useState("");
   const [imageUrl, setImageUrl] = useState("");
   const [isActive, setIsActive] = useState(true);
   const [isFeatured, setIsFeatured] = useState(false);
+
+  const [imageUploading, setImageUploading] = useState(false);
+  const [imageUploadErr, setImageUploadErr] = useState("");
+  const [isDragOver, setIsDragOver] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [saving, setSaving] = useState(false);
   const [pageError, setPageError] = useState("");
@@ -67,7 +70,7 @@ export const AdminProducts: React.FC = () => {
       const list = Array.isArray(data) ? data : data?.products || [];
       setProducts(Array.isArray(list) ? list : []);
     } catch (err) {
-      console.error("Failed to load inventory from API.", err);
+      console.error("Failed to load inventory.", err);
       setProducts([]);
       setPageError(err instanceof Error ? err.message : "Failed to load inventory.");
     } finally {
@@ -79,22 +82,8 @@ export const AdminProducts: React.FC = () => {
     void fetchInventory();
   }, []);
 
-  const buildNextRefCode = () => {
-    const year = new Date().getFullYear();
-    const numericParts = products
-      .map((p) => p.refCode || "")
-      .map((code) => {
-        const match = code.match(/(\d+)$/);
-        return match ? Number(match[1]) : 0;
-      });
-
-    const next = (numericParts.length ? Math.max(...numericParts) : 0) + 1;
-    return `RG-${year}-${String(next).padStart(3, "0")}`;
-  };
-
   const resetForm = () => {
     setName("");
-    setRefCode(buildNextRefCode());
     setCategory("Collections");
     setStoneType("Emerald");
     setStoneColor("");
@@ -104,23 +93,23 @@ export const AdminProducts: React.FC = () => {
     setStockQty(5);
     setPrice(1000);
     setDescription("");
-    setStory("");
     setImageUrl("");
     setIsActive(true);
     setIsFeatured(false);
     setSelectedProd(null);
     setFormError("");
+    setImageUploadErr("");
   };
 
   const handleOpenDrawer = (mode: "create" | "edit", prod: Product | null = null) => {
     setEditMode(mode);
     setDrawerOpen(true);
     setFormError("");
+    setImageUploadErr("");
 
     if (mode === "edit" && prod) {
       setSelectedProd(prod);
       setName(prod.name || "");
-      setRefCode(prod.refCode || "");
       setCategory(prod.category || "Collections");
       setStoneType(prod.stoneType || "Emerald");
       setStoneColor(prod.stoneColor || "");
@@ -130,7 +119,6 @@ export const AdminProducts: React.FC = () => {
       setStockQty(prod.stockQty ?? 5);
       setPrice(prod.price || 1000);
       setDescription(prod.description || "");
-      setStory(prod.story || "");
       setImageUrl(prod.images?.[0] || "");
       setIsActive(prod.isActive ?? true);
       setIsFeatured(prod.isFeatured ?? false);
@@ -145,6 +133,71 @@ export const AdminProducts: React.FC = () => {
     resetForm();
   };
 
+  const uploadFileToCloudinary = useCallback(async (file: File) => {
+    setImageUploadErr("");
+    setImageUploading(true);
+    setImageUrl("");
+
+    const allowed = ["image/jpeg", "image/png", "image/webp", "image/avif"];
+    if (!allowed.includes(file.type)) {
+      setImageUploadErr("Only JPEG, PNG, WEBP and AVIF images are allowed.");
+      setImageUploading(false);
+      return;
+    }
+
+    if (file.size > 8 * 1024 * 1024) {
+      setImageUploadErr("File size must be under 8MB.");
+      setImageUploading(false);
+      return;
+    }
+
+    try {
+      const formData = new FormData();
+      formData.append("image", file);
+
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        credentials: "include",
+        body: formData,
+      });
+
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok) {
+        throw new Error(data?.error || "Upload failed.");
+      }
+
+      setImageUrl(data.url);
+    } catch (err) {
+      setImageUploadErr(err instanceof Error ? err.message : "Image upload failed.");
+    } finally {
+      setImageUploading(false);
+    }
+  }, []);
+
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) void uploadFileToCloudinary(file);
+    e.target.value = "";
+  };
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      setIsDragOver(false);
+      const file = e.dataTransfer.files?.[0];
+      if (file) void uploadFileToCloudinary(file);
+    },
+    [uploadFileToCloudinary]
+  );
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = () => setIsDragOver(false);
+
   const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError("");
@@ -155,7 +208,7 @@ export const AdminProducts: React.FC = () => {
     }
 
     if (!imageUrl.trim()) {
-      setFormError("Primary image URL is required.");
+      setFormError("Please upload a product image before saving.");
       return;
     }
 
@@ -164,8 +217,23 @@ export const AdminProducts: React.FC = () => {
       return;
     }
 
+    if (caratWeight === "" || Number(caratWeight) <= 0) {
+      setFormError("Carat weight must be greater than 0.");
+      return;
+    }
+
     if (Number(stockQty) < 0) {
       setFormError("Stock quantity cannot be negative.");
+      return;
+    }
+
+    if (!origin.trim()) {
+      setFormError("Origin is required.");
+      return;
+    }
+
+    if (!certification.trim()) {
+      setFormError("Certification is required.");
       return;
     }
 
@@ -179,16 +247,14 @@ export const AdminProducts: React.FC = () => {
     try {
       const payload = {
         name: name.trim(),
-        refCode: refCode.trim() || undefined,
         category: category.trim(),
         stoneType: stoneType.trim(),
         stoneColor: stoneColor.trim() || "Deep hue",
-        caratWeight: caratWeight === "" ? undefined : Number(caratWeight),
-        origin: origin.trim() || undefined,
-        certification: certification.trim() || undefined,
+        caratWeight: Number(caratWeight),
+        origin: origin.trim(),
+        certification: certification.trim(),
         price: Number(price),
         description: description.trim(),
-        story: story.trim() || undefined,
         images: [imageUrl.trim()],
         stockQty: Number(stockQty),
         isActive,
@@ -259,7 +325,9 @@ export const AdminProducts: React.FC = () => {
         p.name?.toLowerCase().includes(q) ||
         p.stoneType?.toLowerCase().includes(q) ||
         p.category?.toLowerCase().includes(q) ||
-        p.refCode?.toLowerCase().includes(q)
+        p.stoneColor?.toLowerCase().includes(q) ||
+        p.origin?.toLowerCase().includes(q) ||
+        p.certification?.toLowerCase().includes(q)
     );
   }, [products, search]);
 
@@ -350,10 +418,7 @@ export const AdminProducts: React.FC = () => {
                   </tr>
                 ) : (
                   filteredList.map((p) => (
-                    <tr
-                      key={p.id}
-                      className="group transition-colors hover:bg-surface-container-low"
-                    >
+                    <tr key={p.id} className="group transition-colors hover:bg-surface-container-low">
                       <td className="px-8 py-5">
                         <div className="flex items-center gap-4">
                           <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-lg border border-outline-variant/20 bg-surface-container">
@@ -368,7 +433,7 @@ export const AdminProducts: React.FC = () => {
                               {p.name}
                             </div>
                             <div className="mt-1 text-[10px] uppercase tracking-widest text-[#4f434b]/60">
-                              Ref: {p.refCode || "N/A"}
+                              {p.stoneType} {p.stoneColor ? `· ${p.stoneColor}` : ""}
                             </div>
                           </div>
                         </div>
@@ -384,9 +449,7 @@ export const AdminProducts: React.FC = () => {
                         {formatPrice(p.price)}
                       </td>
 
-                      <td className="px-8 py-5 text-on-surface-variant">
-                        {p.stockQty} Units
-                      </td>
+                      <td className="px-8 py-5 text-on-surface-variant">{p.stockQty} Units</td>
 
                       <td className="px-8 py-5">
                         <div className="relative inline-flex select-none items-center font-sans">
@@ -416,7 +479,7 @@ export const AdminProducts: React.FC = () => {
                           <button
                             onClick={() => handleOpenDrawer("edit", p)}
                             className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border border-primary/5 bg-surface-container transition-all hover:bg-primary-container hover:text-white"
-                            aria-label="Edit product details"
+                            aria-label="Edit product"
                             type="button"
                           >
                             <Pencil className="h-4 w-4" />
@@ -480,33 +543,96 @@ export const AdminProducts: React.FC = () => {
             </div>
 
             <form onSubmit={handleSaveProduct} className="flex-1 space-y-8 pb-10 font-sans">
-              <div className="space-y-4">
+              <div className="space-y-3">
                 <label className="block text-[11px] font-bold uppercase tracking-widest text-on-surface-variant">
-                  Primary Image URL
+                  Product Image
                 </label>
 
                 <input
-                  type="url"
-                  required
-                  value={imageUrl}
-                  onChange={(e) => setImageUrl(e.target.value)}
-                  className="w-full border-b border-primary/20 bg-transparent py-3 text-xs text-primary outline-none transition-colors placeholder:text-on-surface-variant/30 focus:border-secondary"
-                  placeholder="https://example.com/product-image.jpg"
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/avif"
+                  className="hidden"
+                  onChange={handleFileInputChange}
                 />
 
-                <div className="flex aspect-video w-full items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed border-outline-variant/30 bg-[#fcf9f4] p-1">
-                  {imageUrl ? (
-                    <img
-                      alt="Preview of registered specimen"
-                      className="h-full w-full rounded-xl object-cover"
-                      src={imageUrl}
-                    />
+                <div
+                  onDrop={handleDrop}
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onClick={() => !imageUploading && fileInputRef.current?.click()}
+                  className={`relative flex aspect-video w-full cursor-pointer flex-col items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed transition-all duration-200 ${
+                    isDragOver
+                      ? "scale-[1.01] border-secondary bg-secondary/5"
+                      : imageUrl
+                      ? "border-primary/20 bg-transparent p-0"
+                      : "border-outline-variant/30 bg-[#fcf9f4] hover:border-secondary/40 hover:bg-secondary/5"
+                  }`}
+                >
+                  {imageUploading ? (
+                    <div className="flex flex-col items-center gap-3 p-8">
+                      <Loader2 className="h-8 w-8 animate-spin text-secondary" />
+                      <p className="text-[11px] uppercase tracking-widest text-on-surface-variant">
+                        Uploading to vault...
+                      </p>
+                    </div>
+                  ) : imageUrl ? (
+                    <>
+                      <img
+                        src={imageUrl}
+                        alt="Uploaded product"
+                        className="h-full w-full rounded-xl object-cover"
+                      />
+                      <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-xl bg-black/50 opacity-0 transition-opacity hover:opacity-100">
+                        <UploadCloud className="h-7 w-7 text-white" />
+                        <p className="text-[11px] font-bold uppercase tracking-widest text-white">
+                          Replace Image
+                        </p>
+                      </div>
+                    </>
                   ) : (
-                    <div className="text-xs uppercase tracking-widest text-on-surface-variant">
-                      No image selected
+                    <div className="flex flex-col items-center gap-3 p-8 text-center">
+                      <UploadCloud className="h-10 w-10 text-on-surface-variant/40" />
+                      <div>
+                        <p className="text-xs font-semibold text-on-surface-variant">
+                          Drag & drop your image here
+                        </p>
+                        <p className="mt-1 text-[10px] text-on-surface-variant/60">
+                          or{" "}
+                          <span className="font-bold text-secondary underline underline-offset-2">
+                            browse from device
+                          </span>
+                        </p>
+                      </div>
+                      <p className="text-[9px] uppercase tracking-widest text-on-surface-variant/40">
+                        JPEG · PNG · WEBP · AVIF — max 8MB
+                      </p>
                     </div>
                   )}
                 </div>
+
+                {imageUrl && !imageUploading && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setImageUrl("");
+                      setImageUploadErr("");
+                    }}
+                    className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-red-400 hover:text-red-600"
+                  >
+                    <ImageOff className="h-3.5 w-3.5" />
+                    Remove image
+                  </button>
+                )}
+
+                {imageUploadErr && <p className="text-[11px] text-red-500">{imageUploadErr}</p>}
+
+                {imageUrl && !imageUploading && !imageUploadErr && (
+                  <p className="text-[11px] font-semibold text-emerald-600">
+                    ✓ Image uploaded to Cloudinary vault
+                  </p>
+                )}
               </div>
 
               <div className="space-y-8">
@@ -615,14 +741,16 @@ export const AdminProducts: React.FC = () => {
 
                   <div className="relative text-sm">
                     <label className="mb-2 block text-[11px] font-bold uppercase tracking-widest text-on-surface-variant">
-                      Reference RefCode
+                      Stock Quantity
                     </label>
                     <input
-                      type="text"
-                      value={refCode}
-                      onChange={(e) => setRefCode(e.target.value)}
-                      className="w-full border-b border-primary/20 bg-transparent py-3 font-mono text-xs uppercase text-primary outline-none transition-colors focus:border-secondary"
-                      placeholder="e.g. RG-2026-001"
+                      required
+                      type="number"
+                      min="0"
+                      value={stockQty}
+                      onChange={(e) => setStockQty(Number(e.target.value))}
+                      className="w-full border-b border-primary/20 bg-transparent py-3 text-xs text-primary outline-none transition-colors focus:border-secondary"
+                      placeholder="5"
                     />
                   </div>
                 </div>
@@ -655,44 +783,16 @@ export const AdminProducts: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="relative text-sm">
-                  <label className="mb-2 block text-[11px] font-bold uppercase tracking-widest text-on-surface-variant">
-                    Stock Quantity
-                  </label>
-                  <input
-                    required
-                    type="number"
-                    min="0"
-                    value={stockQty}
-                    onChange={(e) => setStockQty(Number(e.target.value))}
-                    className="w-full border-b border-primary/20 bg-transparent py-3 text-xs text-primary outline-none transition-colors focus:border-secondary"
-                    placeholder="5"
-                  />
-                </div>
-
                 <div className="relative">
                   <label className="mb-2 block text-[11px] font-bold uppercase tracking-widest text-on-surface-variant">
-                    Curation Story & Descriptions
+                    Product Description
                   </label>
                   <textarea
                     required
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                     className="w-full resize-none border-b border-primary/20 bg-transparent py-3 font-serif text-sm italic leading-relaxed text-[#31032c] outline-none transition-colors placeholder:text-on-surface-variant/20 focus:border-secondary"
-                    placeholder="Provide details about the cut, raw origins and refraction story of this piece..."
-                    rows={4}
-                  />
-                </div>
-
-                <div className="relative">
-                  <label className="mb-2 block text-[11px] font-bold uppercase tracking-widest text-on-surface-variant">
-                    Extended Story
-                  </label>
-                  <textarea
-                    value={story}
-                    onChange={(e) => setStory(e.target.value)}
-                    className="w-full resize-none border-b border-primary/20 bg-transparent py-3 font-serif text-sm italic leading-relaxed text-[#31032c] outline-none transition-colors placeholder:text-on-surface-variant/20 focus:border-secondary"
-                    placeholder="Optional long-form story for the product detail page..."
+                    placeholder="Provide details about the cut, quality, origin and visual character of this piece..."
                     rows={4}
                   />
                 </div>
@@ -748,12 +848,6 @@ export const AdminProducts: React.FC = () => {
                 </div>
               </div>
 
-              {imageUrl && (
-                <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-                  Primary image ready for save.
-                </div>
-              )}
-
               {formError && (
                 <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
                   {formError}
@@ -771,13 +865,18 @@ export const AdminProducts: React.FC = () => {
 
                 <button
                   type="submit"
-                  disabled={saving}
+                  disabled={saving || imageUploading}
                   className="flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-primary-container py-4 text-center font-sans text-[11px] font-bold uppercase tracking-widest text-white shadow-lg shadow-primary/20 transition-transform hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:scale-100"
                 >
                   {saving ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin" />
                       Saving...
+                    </>
+                  ) : imageUploading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Uploading...
                     </>
                   ) : (
                     "Save to Inventory"
